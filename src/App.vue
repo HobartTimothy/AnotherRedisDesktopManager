@@ -1,10 +1,39 @@
 <template>
   <el-container class="wrap-container" spellcheck="false">
     <!-- left icon nav bar -->
-    <div class="nav-icon-bar" :class="{ collapsed: navCollapsed }">
+    <div class="nav-icon-bar" :class="{ collapsed: navCollapsed }" @contextmenu.prevent="showNavContextMenu">
+      <!-- Right Click Menu -->
+      <div
+        v-show="navContextMenuVisible"
+        class="nav-context-menu"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }">
+        <div class="menu-item" @click="openSettings">
+          <i class="fa fa-cog"></i>
+          {{ $t('message.settings') }}
+        </div>
+        <div class="menu-item" @click="showAboutDialog">
+          <i class="fa fa-info-circle"></i>
+          {{ $t('message.about') }}
+        </div>
+      </div>
+
+      <!-- About Dialog -->
+      <el-dialog :title="$t('message.about')" :visible.sync="aboutDialogVisible" width="400px" :append-to-body="true">
+        <div class="about-content">
+          <img src="./assets/applogo.png" class="about-logo" alt="logo" />
+          <h2 class="about-title">Another Redis Desktop Manager</h2>
+          <p class="about-version">{{ $t('message.pre_version') }}: {{ appVersion }}</p>
+          <div class="about-links">
+            <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager" @click.prevent="openGitHub">
+              <i class="fa fa-github"></i> GitHub
+            </a>
+          </div>
+        </div>
+      </el-dialog>
+
       <!-- header with logo and toggle -->
       <div class="nav-header">
-        <img v-if="!navCollapsed" src="./assets/logo.png" class="nav-logo" alt="logo" />
+        <img v-if="!navCollapsed" src="./assets/applogo.png" class="nav-logo" alt="logo" />
         <div class="nav-toggle-btn" @click="toggleNav" :title="navCollapsed ? 'Expand' : 'Collapse'">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -94,6 +123,11 @@ export default {
       sideWidth: 265,
       activeNav: 'server',
       navCollapsed: false,
+      navContextMenuVisible: false,
+      menuX: 0,
+      menuY: 0,
+      aboutDialogVisible: false,
+      appVersion: (new URL(window.location.href)).searchParams.get('version'),
     };
   },
   created() {
@@ -105,6 +139,11 @@ export default {
     this.restoreSideBarWidth();
     // restore nav collapsed state
     this.navCollapsed = localStorage.navCollapsed === 'true';
+    // hide context menu on click
+    document.addEventListener('click', this.hideNavContextMenu);
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.hideNavContextMenu);
   },
   components: { Aside, Tabs, UpdateCheck, CommandLogPanel },
   methods: {
@@ -115,7 +154,20 @@ export default {
       this.navCollapsed = !this.navCollapsed;
       localStorage.navCollapsed = this.navCollapsed;
     },
+    showNavContextMenu(e) {
+      this.menuX = e.clientX;
+      this.menuY = e.clientY;
+      this.navContextMenuVisible = true;
+    },
+    hideNavContextMenu() {
+      this.navContextMenuVisible = false;
+    },
+    showAboutDialog() {
+      this.hideNavContextMenu();
+      this.aboutDialogVisible = true;
+    },
     openSettings() {
+      this.hideNavContextMenu();
       this.$refs.aside.$refs.settingDialog.show();
     },
     openGitHub() {
@@ -328,15 +380,15 @@ li .list-index {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 8px 4px 12px;
+  padding: 8px 8px 12px 12px;
 }
 .nav-icon-bar.collapsed .nav-header {
   justify-content: center;
-  padding: 8px 8px 4px 8px;
+  padding: 8px 8px 12px 8px;
 }
 .nav-logo {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
@@ -447,5 +499,77 @@ html .dark-mode {
   /*font color*/
   --vxe-ui-font-color: #f3f3f4 !important;
   --vxe-ui-table-header-font-color: #f3f3f4 !important;
+}
+
+/* Nav Context Menu */
+.nav-context-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  min-width: 140px;
+}
+.dark-mode .nav-context-menu {
+  background: #2d3a40;
+  border-color: #4a5a64;
+}
+.nav-context-menu .menu-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+.nav-context-menu .menu-item i {
+  width: 16px;
+  margin-right: 8px;
+  text-align: center;
+}
+.nav-context-menu .menu-item:hover {
+  background: #f0f2f5;
+  color: #409EFF;
+}
+.dark-mode .nav-context-menu .menu-item:hover {
+  background: #3a4a54;
+}
+
+/* About Dialog */
+.about-content {
+  text-align: center;
+  padding: 20px 0;
+}
+.about-logo {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+}
+.about-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+.dark-mode .about-title {
+  color: #e0e0e0;
+}
+.about-version {
+  margin: 0 0 20px 0;
+  color: #909399;
+  font-size: 14px;
+}
+.about-links a {
+  display: inline-flex;
+  align-items: center;
+  color: #409EFF;
+  text-decoration: none;
+  font-size: 14px;
+}
+.about-links a i {
+  margin-right: 6px;
+}
+.about-links a:hover {
+  text-decoration: underline;
 }
 </style>

@@ -118,16 +118,11 @@
       </el-card>
 
       <el-card class="setting-card">
-        <div slot="header">
-          {{$t('message.pre_version')}}
-          <el-tag type="info">{{ appVersion }}</el-tag>
-        </div>
+        <div slot="header">{{ $t('message.other') }}</div>
         <div class="current-version">
           <a href="###" @click.stop.prevent="showHotkeys">{{ $t('message.hotkey') }}</a>
           <a href="###" @click.stop.prevent="clearCache">{{ $t('message.clear_cache') }}</a>
           <a href="###" @click.stop.prevent="checkUpdate">{{ $t('message.check_update') }}</a>
-          <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager/releases">{{ $t('message.manual_update') }}</a>
-          <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager/">{{ $t('message.project_home') }}</a>
         </div>
       </el-card>
     </el-form>

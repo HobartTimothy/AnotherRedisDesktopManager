@@ -22,6 +22,8 @@ const cn = {
     memory: '内存',
     stats: '状态',
     settings: '基础设置',
+    about: '关于',
+    other: '其他',
     ui_settings: '外观',
     feature_settings: '功能',
     common_settings: '通用',

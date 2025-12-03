@@ -22,6 +22,8 @@ const en = {
     memory: 'Memory',
     stats: 'Stats',
     settings: 'Settings',
+    about: 'About',
+    other: 'Other',
     ui_settings: 'Appearance',
     feature_settings: 'Function',
     common_settings: 'General',
