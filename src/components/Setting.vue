@@ -126,8 +126,8 @@
           <a href="###" @click.stop.prevent="showHotkeys">{{ $t('message.hotkey') }}</a>
           <a href="###" @click.stop.prevent="clearCache">{{ $t('message.clear_cache') }}</a>
           <a href="###" @click.stop.prevent="checkUpdate">{{ $t('message.check_update') }}</a>
-          <a href="https://github.com/qishibo/AnotherRedisDesktopManager/releases">{{ $t('message.manual_update') }}</a>
-          <a href="https://github.com/qishibo/AnotherRedisDesktopManager/">{{ $t('message.project_home') }}</a>
+          <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager/releases">{{ $t('message.manual_update') }}</a>
+          <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager/">{{ $t('message.project_home') }}</a>
         </div>
       </el-card>
     </el-form>
@@ -407,13 +407,15 @@ export default {
       });
       this.s3ConfigDialogVisible = false;
     },
+    createS3Service() {
+      return new S3SyncService(this.s3Config);
+    },
     async testS3Connection() {
       if (!this.validateS3Config()) return;
 
       this.s3Testing = true;
       try {
-        const s3Service = new S3SyncService(this.s3Config);
-        const result = await s3Service.testConnection();
+        const result = await this.createS3Service().testConnection();
         if (result.success) {
           this.$message.success(this.$t('message.s3_connection_success'));
         } else {
@@ -428,57 +430,62 @@ export default {
     async s3Upload() {
       if (!this.validateS3Config()) return;
 
-      this.$confirm(this.$t('message.s3_upload_confirm')).then(async () => {
-        this.s3Syncing = true;
-        try {
-          const s3Service = new S3SyncService(this.s3Config);
-          await s3Service.upload();
-          this.$message.success(this.$t('message.s3_upload_success'));
-        } catch (error) {
-          this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
-        } finally {
-          this.s3Syncing = false;
-        }
-      }).catch(() => {});
+      try {
+        await this.$confirm(this.$t('message.s3_upload_confirm'));
+      } catch {
+        return;
+      }
+
+      this.s3Syncing = true;
+      try {
+        await this.createS3Service().upload();
+        this.$message.success(this.$t('message.s3_upload_success'));
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
+      } finally {
+        this.s3Syncing = false;
+      }
     },
     async s3Download() {
       if (!this.validateS3Config()) return;
 
-      this.$confirm(this.$t('message.s3_download_confirm')).then(async () => {
-        this.s3Syncing = true;
-        try {
-          const s3Service = new S3SyncService(this.s3Config);
-          const syncData = await s3Service.download();
-          s3Service.applyDownloadedData(syncData);
+      try {
+        await this.$confirm(this.$t('message.s3_download_confirm'));
+      } catch {
+        return;
+      }
 
-          // Refresh connections
-          this.$bus.$emit('closeConnection');
-          this.$bus.$emit('refreshConnections');
+      this.s3Syncing = true;
+      try {
+        const s3Service = this.createS3Service();
+        const syncData = await s3Service.download();
+        s3Service.applyDownloadedData(syncData);
 
-          this.$message.success(this.$t('message.s3_download_success'));
-        } catch (error) {
-          this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
-        } finally {
-          this.s3Syncing = false;
-        }
-      }).catch(() => {});
+        // Refresh connections
+        this.$bus.$emit('closeConnection');
+        this.$bus.$emit('refreshConnections');
+
+        this.$message.success(this.$t('message.s3_download_success'));
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
+      } finally {
+        this.s3Syncing = false;
+      }
     },
     validateS3Config() {
-      if (!this.s3Config.endpoint) {
-        this.$message.warning(this.$t('message.s3_endpoint_required'));
-        return false;
-      }
-      if (!this.s3Config.accessKeyId) {
-        this.$message.warning(this.$t('message.s3_accesskey_required'));
-        return false;
-      }
-      if (!this.s3Config.secretAccessKey) {
-        this.$message.warning(this.$t('message.s3_secretkey_required'));
-        return false;
-      }
-      if (!this.s3Config.bucket) {
-        this.$message.warning(this.$t('message.s3_bucket_required'));
-        return false;
+      const { endpoint, accessKeyId, secretAccessKey, bucket } = this.s3Config;
+      const validations = [
+        [!endpoint, 's3_endpoint_required'],
+        [!accessKeyId, 's3_accesskey_required'],
+        [!secretAccessKey, 's3_secretkey_required'],
+        [!bucket, 's3_bucket_required'],
+      ];
+
+      for (const [condition, messageKey] of validations) {
+        if (condition) {
+          this.$message.warning(this.$t(`message.${messageKey}`));
+          return false;
+        }
       }
       return true;
     },

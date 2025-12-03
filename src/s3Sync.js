@@ -7,6 +7,8 @@ import https from 'https';
 import http from 'http';
 import storage from './storage';
 
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+
 class S3SyncService {
   constructor(config) {
     this.endpoint = config.endpoint || '';
@@ -14,8 +16,13 @@ class S3SyncService {
     this.accessKeyId = config.accessKeyId || '';
     this.secretAccessKey = config.secretAccessKey || '';
     this.bucket = config.bucket || '';
-    this.prefix = config.prefix || 'ardm-sync/';
+    this.prefix = (config.prefix || 'ardm-sync/').replace(/\/+$/, '/'); // Ensure single trailing slash
     this.parallelism = config.parallelism || 4;
+
+    // Validate required fields
+    if (!this.endpoint || !this.bucket || !this.accessKeyId || !this.secretAccessKey) {
+      throw new Error('Missing required S3 configuration');
+    }
 
     // Parse endpoint to get host and protocol
     const url = new URL(this.endpoint.startsWith('http') ? this.endpoint : `https://${this.endpoint}`);
@@ -25,6 +32,16 @@ class S3SyncService {
     
     // Use Virtual Hosted Style: bucket.endpoint (required by Aliyun OSS, etc.)
     this.host = `${this.bucket}.${this.baseHost}`;
+  }
+
+  /**
+   * Get signing key for AWS Signature V4
+   */
+  getSigningKey(dateStamp) {
+    const kDate = crypto.createHmac('sha256', `AWS4${this.secretAccessKey}`).update(dateStamp).digest();
+    const kRegion = crypto.createHmac('sha256', kDate).update(this.region).digest();
+    const kService = crypto.createHmac('sha256', kRegion).update('s3').digest();
+    return crypto.createHmac('sha256', kService).update('aws4_request').digest();
   }
 
   /**
@@ -45,8 +62,8 @@ class S3SyncService {
       .join(';');
 
     const canonicalHeaders = Object.keys(headers)
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
       .map(k => `${k.toLowerCase()}:${String(headers[k]).trim()}`)
-      .sort()
       .join('\n') + '\n';
 
     const canonicalRequest = [
@@ -69,15 +86,7 @@ class S3SyncService {
     ].join('\n');
 
     // Calculate signature
-    const getSignatureKey = (key, dateStamp, region, service) => {
-      const kDate = crypto.createHmac('sha256', `AWS4${key}`).update(dateStamp).digest();
-      const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
-      const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
-      const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
-      return kSigning;
-    };
-
-    const signingKey = getSignatureKey(this.secretAccessKey, dateStamp, this.region, 's3');
+    const signingKey = this.getSigningKey(dateStamp);
     const signature = crypto.createHmac('sha256', signingKey).update(stringToSign).digest('hex');
 
     // Create authorization header
@@ -87,7 +96,7 @@ class S3SyncService {
   }
 
   /**
-   * Make HTTP request
+   * Make HTTP request with timeout
    */
   request(method, path, body = '', extraHeaders = {}) {
     return new Promise((resolve, reject) => {
@@ -103,9 +112,10 @@ class S3SyncService {
       const options = {
         hostname: this.host,
         port: this.port,
-        path: path,
-        method: method,
-        headers: headers
+        path,
+        method,
+        headers,
+        timeout: REQUEST_TIMEOUT
       };
 
       const protocol = this.protocol === 'https:' ? https : http;
@@ -116,12 +126,23 @@ class S3SyncService {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve({ statusCode: res.statusCode, data });
           } else {
-            reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+            // Extract error message from XML response
+            const errorMatch = data.match(/<Message>([^<]+)<\/Message>/);
+            const errorMsg = errorMatch ? errorMatch[1] : data.slice(0, 200);
+            reject(new Error(`HTTP ${res.statusCode}: ${errorMsg}`));
           }
         });
       });
 
-      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.on('error', (err) => {
+        reject(new Error(`Network error: ${err.message}`));
+      });
+
       req.write(body);
       req.end();
     });
@@ -144,14 +165,12 @@ class S3SyncService {
     const syncData = {
       version: 1,
       timestamp: new Date().toISOString(),
-      connections: connections,
-      groups: groups
+      connections,
+      groups
     };
 
-    const body = JSON.stringify(syncData, null, 2);
-    const path = this.getSyncFilePath();
-
-    await this.request('PUT', path, body);
+    const body = JSON.stringify(syncData);
+    await this.request('PUT', this.getSyncFilePath(), body);
     return syncData;
   }
 
@@ -159,11 +178,12 @@ class S3SyncService {
    * Download connections and groups from S3
    */
   async download() {
-    const path = this.getSyncFilePath();
-    const response = await this.request('GET', path);
-
-    const syncData = JSON.parse(response.data);
-    return syncData;
+    const response = await this.request('GET', this.getSyncFilePath());
+    try {
+      return JSON.parse(response.data);
+    } catch (e) {
+      throw new Error('Invalid sync data format');
+    }
   }
 
   /**

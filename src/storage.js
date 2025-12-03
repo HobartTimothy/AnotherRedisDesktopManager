@@ -15,6 +15,28 @@ export default {
 
     return groups;
   },
+  getRootGroups() {
+    const groups = this.getGroups(true);
+    return groups.filter(g => !g.parentKey);
+  },
+  getChildGroups(parentKey) {
+    const groups = this.getGroups(true);
+    return groups.filter(g => g.parentKey === parentKey);
+  },
+  getGroupDepth(groupKey) {
+    const groups = this.getGroups();
+    let depth = 1;
+    let current = groups[groupKey];
+    while (current && current.parentKey) {
+      depth++;
+      current = groups[current.parentKey];
+    }
+    return depth;
+  },
+  canAddSubGroup(parentKey) {
+    // Max depth is 3
+    return this.getGroupDepth(parentKey) < 3;
+  },
   setGroups(groups) {
     localStorage.connectionGroups = JSON.stringify(groups);
   },
@@ -41,13 +63,25 @@ export default {
   },
   deleteGroup(groupKey) {
     const groups = this.getGroups();
-    delete groups[groupKey];
+    
+    // Recursively delete child groups
+    const deleteRecursive = (key) => {
+      // Find and delete children first
+      for (const k in groups) {
+        if (groups[k].parentKey === key) {
+          deleteRecursive(k);
+        }
+      }
+      delete groups[key];
+    };
+    
+    deleteRecursive(groupKey);
     this.setGroups(groups);
 
-    // move connections in this group to ungrouped
+    // move connections in deleted groups to ungrouped
     const connections = this.getConnections();
     for (const key in connections) {
-      if (connections[key].groupKey === groupKey) {
+      if (!groups[connections[key].groupKey]) {
         connections[key].groupKey = '';
       }
     }

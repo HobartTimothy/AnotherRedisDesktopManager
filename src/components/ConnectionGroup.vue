@@ -3,23 +3,41 @@
     <!-- Group Header -->
     <div
       class="group-header"
+      :style="{ paddingLeft: (12 + (depth - 1) * 16) + 'px' }"
       @click="toggleExpand"
       @contextmenu.prevent="showContextMenu">
       <i :class="['group-arrow', 'el-icon-arrow-right', { 'is-expanded': isExpanded }]"></i>
-      <i class="group-icon fa fa-folder" :style="{ color: group.color || '#909399' }"></i>
+      <img v-if="group.icon" :src="group.icon" class="group-icon-img" />
+      <i v-else class="group-icon fa fa-folder" :style="{ color: group.color || '#909399' }"></i>
       <span class="group-name">{{ group.name }}</span>
-      <span class="group-count">({{ connections.length }})</span>
+      <span class="group-count">({{ totalCount }})</span>
     </div>
 
-    <!-- Group Connections -->
-    <div v-show="isExpanded" class="group-connections" :ref="'groupConnections_' + group.key">
-      <ConnectionWrapper
-        v-for="(item, index) of connections"
-        :key="item.key ? item.key : item.connectionName"
-        :index="index"
+    <!-- Group Content (子分组 + 连接) -->
+    <div v-show="isExpanded" class="group-content">
+      <!-- Child Groups (递归) -->
+      <ConnectionGroup
+        v-for="childGroup in childGroups"
+        :key="childGroup.key"
+        :group="childGroup"
+        :connections="getGroupConnections(childGroup.key)"
+        :allConnections="allConnections"
+        :allGroups="allGroups"
         :globalSettings="globalSettings"
-        :config='item'>
-      </ConnectionWrapper>
+        :depth="depth + 1"
+        @refresh="$emit('refresh')"
+        @sortConnections="$emit('sortConnections', $event)" />
+      
+      <!-- Group Connections -->
+      <div class="group-connections" :ref="'groupConnections_' + group.key">
+        <ConnectionWrapper
+          v-for="(item, index) of connections"
+          :key="item.key ? item.key : item.connectionName"
+          :index="index"
+          :globalSettings="globalSettings"
+          :config='item'>
+        </ConnectionWrapper>
+      </div>
     </div>
 
     <!-- Context Menu -->
@@ -30,6 +48,10 @@
       <div class="menu-item" @click="addConnection">
         <i class="el-icon-circle-plus"></i>
         {{ $t('message.new_connection') }}
+      </div>
+      <div v-if="depth < 3" class="menu-item" @click="showAddSubGroupDialog">
+        <i class="el-icon-folder-add"></i>
+        {{ $t('message.add_sub_group') }}
       </div>
       <div class="menu-item" @click="editGroup">
         <i class="el-icon-edit"></i>
@@ -51,6 +73,24 @@
         <el-form-item :label="$t('message.group_name')">
           <el-input v-model="editGroupName" :placeholder="$t('message.group_name')"></el-input>
         </el-form-item>
+        <el-form-item :label="$t('message.group_icon')">
+          <div class="icon-upload-area">
+            <div class="icon-preview" @click="triggerIconUpload">
+              <img v-if="editGroupIcon" :src="editGroupIcon" class="preview-img" />
+              <i v-else class="el-icon-plus"></i>
+            </div>
+            <input
+              type="file"
+              ref="iconInput"
+              accept="image/*"
+              style="display: none"
+              @change="handleIconChange" />
+            <el-button v-if="editGroupIcon" type="text" size="mini" @click="editGroupIcon = ''">
+              {{ $t('message.remove') }}
+            </el-button>
+            <div class="icon-tip">{{ $t('message.icon_size_tip') }}</div>
+          </div>
+        </el-form-item>
         <el-form-item :label="$t('message.mark_color')">
           <el-color-picker
             v-model="editGroupColor"
@@ -61,6 +101,47 @@
       <div slot="footer">
         <el-button @click="editDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
         <el-button type="primary" @click="saveGroup">{{ $t('el.messagebox.confirm') }}</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Add Sub Group Dialog -->
+    <el-dialog
+      :title="$t('message.add_sub_group')"
+      :visible.sync="addSubGroupDialogVisible"
+      :append-to-body='true'
+      width="400px">
+      <el-form label-position="top">
+        <el-form-item :label="$t('message.group_name')">
+          <el-input v-model="newSubGroupName" :placeholder="$t('message.group_name')"></el-input>
+        </el-form-item>
+        <el-form-item :label="$t('message.group_icon')">
+          <div class="icon-upload-area">
+            <div class="icon-preview" @click="triggerSubIconUpload">
+              <img v-if="newSubGroupIcon" :src="newSubGroupIcon" class="preview-img" />
+              <i v-else class="el-icon-plus"></i>
+            </div>
+            <input
+              type="file"
+              ref="subIconInput"
+              accept="image/*"
+              style="display: none"
+              @change="handleSubIconChange" />
+            <el-button v-if="newSubGroupIcon" type="text" size="mini" @click="newSubGroupIcon = ''">
+              {{ $t('message.remove') }}
+            </el-button>
+            <div class="icon-tip">{{ $t('message.icon_size_tip') }}</div>
+          </div>
+        </el-form-item>
+        <el-form-item :label="$t('message.mark_color')">
+          <el-color-picker
+            v-model="newSubGroupColor"
+            :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff', '#909399']">
+          </el-color-picker>
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button @click="addSubGroupDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="primary" @click="addSubGroup">{{ $t('el.messagebox.confirm') }}</el-button>
       </div>
     </el-dialog>
   </div>
@@ -83,9 +164,21 @@ export default {
       type: Array,
       default: () => [],
     },
+    allConnections: {
+      type: Array,
+      default: () => [],
+    },
+    allGroups: {
+      type: Array,
+      default: () => [],
+    },
     globalSettings: {
       type: Object,
       default: () => ({}),
+    },
+    depth: {
+      type: Number,
+      default: 1,
     },
   },
   data() {
@@ -97,6 +190,12 @@ export default {
       editDialogVisible: false,
       editGroupName: '',
       editGroupColor: '',
+      editGroupIcon: '',
+      // Sub group dialog
+      addSubGroupDialogVisible: false,
+      newSubGroupName: '',
+      newSubGroupColor: '#409EFF',
+      newSubGroupIcon: '',
     };
   },
   mounted() {
@@ -106,6 +205,24 @@ export default {
   beforeDestroy() {
     document.removeEventListener('click', this.hideContextMenu);
   },
+  computed: {
+    childGroups() {
+      return this.allGroups.filter(g => g.parentKey === this.group.key);
+    },
+    totalCount() {
+      // Count connections in this group and all child groups
+      let count = this.connections.length;
+      const countRecursive = (parentKey) => {
+        const children = this.allGroups.filter(g => g.parentKey === parentKey);
+        for (const child of children) {
+          count += this.allConnections.filter(c => c.groupKey === child.key).length;
+          countRecursive(child.key);
+        }
+      };
+      countRecursive(this.group.key);
+      return count;
+    },
+  },
   methods: {
     toggleExpand() {
       this.isExpanded = !this.isExpanded;
@@ -113,6 +230,69 @@ export default {
     addConnection() {
       this.hideContextMenu();
       this.$bus.$emit('showNewConnectionWithGroup', this.group.key);
+    },
+    getGroupConnections(groupKey) {
+      return this.allConnections.filter(c => c.groupKey === groupKey);
+    },
+    showAddSubGroupDialog() {
+      this.newSubGroupName = '';
+      this.newSubGroupColor = '#409EFF';
+      this.newSubGroupIcon = '';
+      this.addSubGroupDialogVisible = true;
+      this.hideContextMenu();
+    },
+    triggerSubIconUpload() {
+      this.$refs.subIconInput.click();
+    },
+    handleSubIconChange(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 100 * 1024) {
+        this.$message.warning(this.$t('message.icon_size_exceed'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.width > 180 || img.height > 180) {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(180 / img.width, 180 / img.height);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            this.newSubGroupIcon = canvas.toDataURL('image/png');
+          } else {
+            this.newSubGroupIcon = event.target.result;
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    addSubGroup() {
+      if (!this.newSubGroupName.trim()) {
+        this.$message.warning(this.$t('message.group_name_required'));
+        return;
+      }
+
+      storage.addGroup({
+        name: this.newSubGroupName.trim(),
+        color: this.newSubGroupColor,
+        icon: this.newSubGroupIcon,
+        parentKey: this.group.key,
+      });
+
+      this.addSubGroupDialogVisible = false;
+      this.$emit('refresh');
+      this.$message.success({
+        message: this.$t('message.add_success'),
+        duration: 1000,
+      });
     },
     showContextMenu(e) {
       this.contextMenuX = e.clientX;
@@ -125,8 +305,45 @@ export default {
     editGroup() {
       this.editGroupName = this.group.name;
       this.editGroupColor = this.group.color || '';
+      this.editGroupIcon = this.group.icon || '';
       this.editDialogVisible = true;
       this.hideContextMenu();
+    },
+    triggerIconUpload() {
+      this.$refs.iconInput.click();
+    },
+    handleIconChange(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Check file size (100KB)
+      if (file.size > 100 * 1024) {
+        this.$message.warning(this.$t('message.icon_size_exceed'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Check dimensions
+          if (img.width > 180 || img.height > 180) {
+            // Resize image
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(180 / img.width, 180 / img.height);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            this.editGroupIcon = canvas.toDataURL('image/png');
+          } else {
+            this.editGroupIcon = event.target.result;
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
     },
     saveGroup() {
       if (!this.editGroupName.trim()) {
@@ -138,6 +355,7 @@ export default {
         key: this.group.key,
         name: this.editGroupName.trim(),
         color: this.editGroupColor,
+        icon: this.editGroupIcon,
       });
 
       this.editDialogVisible = false;
@@ -222,6 +440,14 @@ export default {
   font-size: 14px;
 }
 
+.group-icon-img {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
 .group-name {
   font-weight: bold;
   font-size: 14px;
@@ -235,11 +461,15 @@ export default {
 
 .group-connections {
   margin-left: 10px;
-  border-left: 2px solid #e4e7ed;
   padding-left: 8px;
 }
 
-.dark-mode .group-connections {
+.group-content {
+  border-left: 2px solid #e4e7ed;
+  margin-left: 18px;
+}
+
+.dark-mode .group-content {
   border-left-color: #4a5a64;
 }
 
@@ -274,5 +504,44 @@ export default {
 
 .group-context-menu .menu-item i {
   margin-right: 8px;
+}
+
+.icon-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-preview {
+  width: 60px;
+  height: 60px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.icon-preview:hover {
+  border-color: #409EFF;
+}
+
+.icon-preview .el-icon-plus {
+  font-size: 24px;
+  color: #909399;
+}
+
+.icon-preview .preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.icon-tip {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

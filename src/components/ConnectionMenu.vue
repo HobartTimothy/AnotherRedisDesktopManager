@@ -42,22 +42,44 @@
         <!-- move to group submenu -->
         <el-dropdown-item divided>
           <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
-            <div slot="reference" style="width: 100%">
-              <i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}
-              <i class="el-icon-arrow-right" style="float: right; margin-top: 3px;"></i>
+            <div slot="reference" class="move-to-group-trigger">
+              <span><i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}</span>
+              <i class="el-icon-arrow-right"></i>
             </div>
             <div class="group-list">
+              <!-- Ungrouped option -->
               <div class="group-item" @click="moveToGroup('')" v-if="config.groupKey">
                 <i class="fa fa-folder-o"></i>&nbsp;{{ $t('message.ungrouped') }}
               </div>
-              <div
-                v-for="group in groups"
-                :key="group.key"
-                class="group-item"
-                :class="{ 'is-current': config.groupKey === group.key }"
-                @click="moveToGroup(group.key)">
-                <i class="fa fa-folder" :style="{ color: group.color }"></i>&nbsp;{{ group.name }}
-              </div>
+              <!-- Root groups with nested children -->
+              <template v-for="group in rootGroups">
+                <div
+                  :key="group.key"
+                  class="group-item level-1"
+                  :class="{ 'is-current': config.groupKey === group.key }"
+                  @click="moveToGroup(group.key)">
+                  <i class="fa fa-folder" :style="{ color: group.color }"></i>&nbsp;{{ group.name }}
+                </div>
+                <!-- Level 2 children -->
+                <template v-for="child2 in getChildGroups(group.key)">
+                  <div
+                    :key="child2.key"
+                    class="group-item level-2"
+                    :class="{ 'is-current': config.groupKey === child2.key }"
+                    @click="moveToGroup(child2.key)">
+                    <i class="fa fa-folder" :style="{ color: child2.color }"></i>&nbsp;{{ child2.name }}
+                  </div>
+                  <!-- Level 3 children -->
+                  <div
+                    v-for="child3 in getChildGroups(child2.key)"
+                    :key="child3.key"
+                    class="group-item level-3"
+                    :class="{ 'is-current': config.groupKey === child3.key }"
+                    @click="moveToGroup(child3.key)">
+                    <i class="fa fa-folder" :style="{ color: child3.color }"></i>&nbsp;{{ child3.name }}
+                  </div>
+                </template>
+              </template>
               <div v-if="groups.length === 0" class="no-groups">
                 {{ $t('message.no_groups') }}
               </div>
@@ -127,6 +149,11 @@ export default {
   },
   props: ['config', 'client'],
   components: { NewConnectionDialog },
+  computed: {
+    rootGroups() {
+      return this.groups.filter(g => !g.parentKey);
+    },
+  },
   created() {
     this.loadGroups();
     this.$bus.$on('duplicateConnection', (newConfig) => {
@@ -425,6 +452,9 @@ export default {
     loadGroups() {
       this.groups = storage.getGroups(true);
     },
+    getChildGroups(parentKey) {
+      return this.groups.filter(g => g.parentKey === parentKey);
+    },
     moveToGroup(groupKey) {
       if (this.config.groupKey === groupKey) {
         return;
@@ -495,6 +525,16 @@ export default {
   }
 
   /* Move to group popover styles */
+  .move-to-group-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .move-to-group-trigger .el-icon-arrow-right {
+    margin-left: 8px;
+    font-size: 12px;
+  }
   .move-to-group-popover {
     padding: 0 !important;
     min-width: 120px;
@@ -507,6 +547,12 @@ export default {
     padding: 8px 16px;
     cursor: pointer;
     font-size: 13px;
+  }
+  .move-to-group-popover .group-item.level-2 {
+    padding-left: 32px;
+  }
+  .move-to-group-popover .group-item.level-3 {
+    padding-left: 48px;
   }
   .move-to-group-popover .group-item:hover {
     background: #f0f2f5;

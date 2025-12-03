@@ -28,7 +28,7 @@ process.on('uncaughtException', (err, origin) => {
     title: 'Whoops! Uncaught Exception',
     message: err.stack,
     detail: '\nDon\'t worry, I will fix it! 😎😎\n\n'
-            + 'Submit issue to: \nhttps://github.com/qishibo/AnotherRedisDesktopManager/',
+            + 'Submit issue to: \nhttps://github.com/HobartTimothy/AnotherRedisDesktopManager/',
   });
 
   process.exit();
@@ -211,7 +211,7 @@ if (process.platform === 'darwin') {
           label: 'Learn More',
           click: async () => {
             const { shell } = require('electron');
-            await shell.openExternal('https://github.com/qishibo/AnotherRedisDesktopManager');
+            await shell.openExternal('https://github.com/HobartTimothy/AnotherRedisDesktopManager');
           },
         },
       ],

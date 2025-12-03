@@ -76,17 +76,21 @@ export default {
   },
   created() {
     document.addEventListener('click', this.hideContextMenu);
-    this.$bus.$on('refreshConnections', () => {
-      this.updateConnectionsCount();
-    });
-    this.$bus.$on('showNewConnectionWithGroup', (groupKey) => {
-      this.$refs.newConnectionDialog.showWithGroup(groupKey);
-    });
+    this.$bus.$on('refreshConnections', this.handleRefreshConnections);
+    this.$bus.$on('showNewConnectionWithGroup', this.handleShowNewConnectionWithGroup);
   },
   beforeDestroy() {
     document.removeEventListener('click', this.hideContextMenu);
+    this.$bus.$off('refreshConnections', this.handleRefreshConnections);
+    this.$bus.$off('showNewConnectionWithGroup', this.handleShowNewConnectionWithGroup);
   },
   methods: {
+    handleRefreshConnections() {
+      this.updateConnectionsCount();
+    },
+    handleShowNewConnectionWithGroup(groupKey) {
+      this.$refs.newConnectionDialog.showWithGroup(groupKey);
+    },
     updateConnectionsCount() {
       this.connectionsCount = this.$refs.connections ? this.$refs.connections.connections.length : 0;
     },
