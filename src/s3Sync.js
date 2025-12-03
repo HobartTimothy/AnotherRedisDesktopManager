@@ -19,9 +19,12 @@ class S3SyncService {
 
     // Parse endpoint to get host and protocol
     const url = new URL(this.endpoint.startsWith('http') ? this.endpoint : `https://${this.endpoint}`);
-    this.host = url.hostname;
+    this.baseHost = url.hostname;
     this.port = url.port || (url.protocol === 'https:' ? 443 : 80);
     this.protocol = url.protocol;
+    
+    // Use Virtual Hosted Style: bucket.endpoint (required by Aliyun OSS, etc.)
+    this.host = `${this.bucket}.${this.baseHost}`;
   }
 
   /**
@@ -125,10 +128,10 @@ class S3SyncService {
   }
 
   /**
-   * Get sync file path
+   * Get sync file path (Virtual Hosted Style - no bucket in path)
    */
   getSyncFilePath() {
-    return `/${this.bucket}/${this.prefix}connections.json`;
+    return `/${this.prefix}connections.json`;
   }
 
   /**
@@ -197,8 +200,8 @@ class S3SyncService {
    */
   async testConnection() {
     try {
-      // Try to list objects with prefix
-      const path = `/${this.bucket}?prefix=${encodeURIComponent(this.prefix)}&max-keys=1`;
+      // Try to list objects with prefix (Virtual Hosted Style - no bucket in path)
+      const path = `/?prefix=${encodeURIComponent(this.prefix)}&max-keys=1`;
       await this.request('GET', path);
       return { success: true };
     } catch (error) {

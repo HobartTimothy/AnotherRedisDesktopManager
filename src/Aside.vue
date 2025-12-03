@@ -2,12 +2,15 @@
   <div class="aside-outer-container">
     <div>
       <!-- top bar with title and buttons -->
-      <div class="aside-top-container" @contextmenu.prevent="showContextMenu">
-        <div class="aside-title">
-          <i class="fa fa-database"></i>
-          <span>{{ $t('message.my_connections') }}</span>
-          <span class="connections-count">({{ connectionsCount }})</span>
-        </div>
+      <div class="aside-top-container">
+        <el-button 
+          class="aside-my-connections-btn" 
+          type="primary" 
+          icon="fa fa-database"
+          @contextmenu.native.prevent="showContextMenu"
+          @click="showContextMenu">
+          {{ $t('message.my_connections') }} ({{ connectionsCount }})
+        </el-button>
         <div class="aside-btns">
           <el-button class='aside-setting-btn' type="primary" icon="el-icon-time" @click.stop="$refs.commandLogDialog.show()" :title='$t("message.command_log")+" Ctrl+g"' plain></el-button>
           <el-button class='aside-setting-btn' type="primary" icon="el-icon-setting" @click.stop="$refs.settingDialog.show()" :title='$t("message.settings")+" Ctrl+,"' plain></el-button>
@@ -88,8 +91,8 @@ export default {
       this.connectionsCount = this.$refs.connections ? this.$refs.connections.connections.length : 0;
     },
     showContextMenu(e) {
-      this.menuX = e.clientX;
-      this.menuY = e.clientY;
+      this.menuX = e.clientX || e.target.getBoundingClientRect().left;
+      this.menuY = e.clientY || e.target.getBoundingClientRect().bottom;
       this.contextMenuVisible = true;
     },
     hideContextMenu() {
@@ -143,35 +146,20 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px 10px 8px;
+    padding: 8px 12px 8px 8px;
     border-bottom: 1px solid #e4e7ed;
-    cursor: pointer;
-    user-select: none;
-  }
-  .aside-top-container:hover {
-    background: #f5f7fa;
   }
   .dark-mode .aside-top-container {
     border-bottom-color: #4a5a64;
   }
-  .dark-mode .aside-top-container:hover {
-    background: #3a4a54;
-  }
-  .aside-top-container .aside-title {
-    display: flex;
-    align-items: center;
-    font-size: 14px;
+  .aside-top-container .aside-my-connections-btn {
+    flex: 1;
+    margin-right: 8px;
+    text-align: left;
     font-weight: bold;
   }
-  .aside-top-container .aside-title i {
-    margin-right: 8px;
-    color: #409EFF;
-  }
-  .aside-top-container .aside-title .connections-count {
-    margin-left: 4px;
-    color: #909399;
-    font-size: 12px;
-    font-weight: normal;
+  .aside-top-container .aside-my-connections-btn .fa {
+    margin-right: 6px;
   }
   .aside-top-container .aside-btns {
     display: flex;
