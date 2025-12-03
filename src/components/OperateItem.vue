@@ -9,14 +9,13 @@
             <el-option
               v-for="index in dbsCopy"
               :key="index"
-              :label="`DB${index}`"
+              :label="getDbLabel(index)"
               :value="index">
               <span>
-                {{`DB${index}`}}
+                {{ getDbLabel(index) }}
                 <span class="db-select-key-count" v-if="dbKeysCount[index]">[{{dbKeysCount[index]}}]</span>
                 <span class="db-select-custom-name">
-                  <span class="db-select-key-count">{{dbNames[index]}}</span>
-
+                  <span v-if="!dbNames[index]" class="db-select-key-count"></span>
                   <span class="el-icon-edit-outline" @click.stop.prevent='customDbName(index)'></span>
                 </span>
               </span>
@@ -182,12 +181,30 @@ export default {
       });
     },
     initCustomDbName() {
+      // First, try to load from connection config's dbAliases
+      if (this.config && this.config.dbAliases && this.config.dbAliases.length > 0) {
+        const aliasMap = {};
+        this.config.dbAliases.forEach(alias => {
+          if (alias.name) {
+            aliasMap[alias.db] = alias.name;
+          }
+        });
+        this.dbNames = aliasMap;
+      }
+      
+      // Then, merge with localStorage custom names (localStorage takes precedence for backward compatibility)
       const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
       const customNames = JSON.parse(localStorage.getItem(dbKey));
 
       if (customNames) {
-        this.dbNames = customNames;
+        this.dbNames = { ...this.dbNames, ...customNames };
       }
+    },
+    getDbLabel(index) {
+      if (this.dbNames[index]) {
+        return `DB${index} (${this.dbNames[index]})`;
+      }
+      return `DB${index}`;
     },
     getDatabasesFromInfo(guessMaxDb = false) {
       if (!this.client) {

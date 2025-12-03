@@ -264,12 +264,11 @@ export default {
 
 <style type="text/css">
   .connections-wrap {
-    height: calc(100vh - 59px);
+    height: 100%;
     overflow-y: auto;
-    margin-top: 8px;
   }
   .connections-wrap .filter-input {
-    padding: 0 13px 8px 13px;
+    padding: 12px 16px 8px 16px;
   }
   /* set drag area min height, target to the end will be correct */
   .connections-wrap .connections-list {
