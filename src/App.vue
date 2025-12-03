@@ -1,18 +1,27 @@
 <template>
   <el-container class="wrap-container" spellcheck="false">
     <!-- left icon nav bar -->
-    <div class="nav-icon-bar" :class="{ collapsed: navCollapsed }" @contextmenu.prevent="showNavContextMenu">
-      <!-- Right Click Menu -->
+    <div class="nav-icon-bar" :class="{ collapsed: navCollapsed }">
+      <!-- Settings Menu -->
       <div
-        v-show="navContextMenuVisible"
-        class="nav-context-menu"
+        v-show="settingsMenuVisible"
+        class="settings-menu"
         :style="{ left: menuX + 'px', top: menuY + 'px' }">
-        <div class="menu-item" @click="openSettings">
+        <div class="menu-item" @click="openPreferences">
           <i class="fa fa-cog"></i>
-          {{ $t('message.settings') }}
+          {{ $t('message.preferences') }}
         </div>
+        <div class="menu-item" @click="reportBug">
+          {{ $t('message.report_bug') }}
+        </div>
+        <div class="menu-item" @click="openGuide">
+          {{ $t('message.user_guide') }}
+        </div>
+        <div class="menu-item" @click="checkUpdate">
+          {{ $t('message.check_update') }}...
+        </div>
+        <div class="menu-divider"></div>
         <div class="menu-item" @click="showAboutDialog">
-          <i class="fa fa-info-circle"></i>
           {{ $t('message.about') }}
         </div>
       </div>
@@ -63,17 +72,10 @@
       <div class="nav-bottom">
         <div 
           class="nav-icon-item" 
-          @click="openSettings"
+          @click="showSettingsMenu"
           :title="$t('message.settings')">
           <i class="fa fa-cog"></i>
           <span v-if="!navCollapsed" class="nav-label">{{ $t('message.settings') }}</span>
-        </div>
-        <div 
-          class="nav-icon-item" 
-          @click="openGitHub"
-          :title="'GitHub'">
-          <i class="fa fa-github"></i>
-          <span v-if="!navCollapsed" class="nav-label">GitHub</span>
         </div>
       </div>
     </div>
@@ -123,7 +125,7 @@ export default {
       sideWidth: 265,
       activeNav: 'server',
       navCollapsed: false,
-      navContextMenuVisible: false,
+      settingsMenuVisible: false,
       menuX: 0,
       menuY: 0,
       aboutDialogVisible: false,
@@ -139,11 +141,11 @@ export default {
     this.restoreSideBarWidth();
     // restore nav collapsed state
     this.navCollapsed = localStorage.navCollapsed === 'true';
-    // hide context menu on click
-    document.addEventListener('click', this.hideNavContextMenu);
+    // hide menu on click
+    document.addEventListener('click', this.hideSettingsMenu);
   },
   beforeDestroy() {
-    document.removeEventListener('click', this.hideNavContextMenu);
+    document.removeEventListener('click', this.hideSettingsMenu);
   },
   components: { Aside, Tabs, UpdateCheck, CommandLogPanel },
   methods: {
@@ -154,21 +156,36 @@ export default {
       this.navCollapsed = !this.navCollapsed;
       localStorage.navCollapsed = this.navCollapsed;
     },
-    showNavContextMenu(e) {
-      this.menuX = e.clientX;
-      this.menuY = e.clientY;
-      this.navContextMenuVisible = true;
+    showSettingsMenu(e) {
+      e.stopPropagation();
+      // Position menu above the settings button
+      const rect = e.currentTarget.getBoundingClientRect();
+      this.menuX = rect.left;
+      this.menuY = rect.top - 10; // Will be adjusted by CSS transform
+      this.settingsMenuVisible = true;
     },
-    hideNavContextMenu() {
-      this.navContextMenuVisible = false;
+    hideSettingsMenu() {
+      this.settingsMenuVisible = false;
     },
     showAboutDialog() {
-      this.hideNavContextMenu();
+      this.hideSettingsMenu();
       this.aboutDialogVisible = true;
     },
-    openSettings() {
-      this.hideNavContextMenu();
+    openPreferences() {
+      this.hideSettingsMenu();
       this.$refs.aside.$refs.settingDialog.show();
+    },
+    reportBug() {
+      this.hideSettingsMenu();
+      shell.openExternal('https://github.com/HobartTimothy/AnotherRedisDesktopManager/issues');
+    },
+    openGuide() {
+      this.hideSettingsMenu();
+      shell.openExternal('https://github.com/HobartTimothy/AnotherRedisDesktopManager#readme');
+    },
+    checkUpdate() {
+      this.hideSettingsMenu();
+      this.$bus.$emit('update-check');
     },
     openGitHub() {
       shell.openExternal('https://github.com/HobartTimothy/AnotherRedisDesktopManager');
@@ -501,38 +518,51 @@ html .dark-mode {
   --vxe-ui-table-header-font-color: #f3f3f4 !important;
 }
 
-/* Nav Context Menu */
-.nav-context-menu {
+/* Settings Menu */
+.settings-menu {
   position: fixed;
   background: #fff;
   border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 9999;
-  min-width: 140px;
+  min-width: 160px;
+  transform: translateY(-100%);
+  padding: 4px 0;
 }
-.dark-mode .nav-context-menu {
+.dark-mode .settings-menu {
   background: #2d3a40;
   border-color: #4a5a64;
 }
-.nav-context-menu .menu-item {
+.settings-menu .menu-item {
   padding: 10px 16px;
   cursor: pointer;
   font-size: 13px;
   display: flex;
   align-items: center;
+  color: #606266;
 }
-.nav-context-menu .menu-item i {
+.dark-mode .settings-menu .menu-item {
+  color: #b0bec5;
+}
+.settings-menu .menu-item i {
   width: 16px;
-  margin-right: 8px;
+  margin-right: 10px;
   text-align: center;
 }
-.nav-context-menu .menu-item:hover {
+.settings-menu .menu-item:hover {
   background: #f0f2f5;
-  color: #409EFF;
 }
-.dark-mode .nav-context-menu .menu-item:hover {
+.dark-mode .settings-menu .menu-item:hover {
   background: #3a4a54;
+}
+.settings-menu .menu-divider {
+  height: 1px;
+  background: #e4e7ed;
+  margin: 4px 0;
+}
+.dark-mode .settings-menu .menu-divider {
+  background: #4a5a64;
 }
 
 /* About Dialog */
