@@ -23,11 +23,11 @@
         class="aside-context-menu"
         :style="{ left: menuX + 'px', top: menuY + 'px' }">
         <div class="menu-item" @click="addNewConnection">
-          <i class="el-icon-circle-plus"></i>
+          <i class="fa fa-plus-circle"></i>
           {{ $t('message.new_connection') }}
         </div>
         <div class="menu-item" @click="addNewGroup">
-          <i class="el-icon-folder-add"></i>
+          <i class="fa fa-folder"></i>
           {{ $t('message.add_group') }}
         </div>
       </div>
@@ -191,6 +191,13 @@ export default {
     padding: 10px 16px;
     cursor: pointer;
     font-size: 13px;
+    display: flex;
+    align-items: center;
+  }
+  .aside-context-menu .menu-item i {
+    width: 16px;
+    margin-right: 8px;
+    text-align: center;
   }
   .aside-context-menu .menu-item:hover {
     background: #f0f2f5;

@@ -46,19 +46,19 @@
       class="group-context-menu"
       :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }">
       <div class="menu-item" @click="addConnection">
-        <i class="el-icon-circle-plus"></i>
+        <i class="fa fa-plus-circle"></i>
         {{ $t('message.new_connection') }}
       </div>
       <div v-if="depth < 3" class="menu-item" @click="showAddSubGroupDialog">
-        <i class="el-icon-folder-add"></i>
+        <i class="fa fa-folder"></i>
         {{ $t('message.add_sub_group') }}
       </div>
       <div class="menu-item" @click="editGroup">
-        <i class="el-icon-edit"></i>
+        <i class="fa fa-pencil"></i>
         {{ $t('message.edit_group') }}
       </div>
       <div class="menu-item" @click="deleteGroup">
-        <i class="el-icon-delete"></i>
+        <i class="fa fa-trash-o"></i>
         {{ $t('message.delete_group') }}
       </div>
     </div>
@@ -492,6 +492,8 @@ export default {
   padding: 8px 16px;
   cursor: pointer;
   font-size: 13px;
+  display: flex;
+  align-items: center;
 }
 
 .group-context-menu .menu-item:hover {
@@ -503,7 +505,9 @@ export default {
 }
 
 .group-context-menu .menu-item i {
+  width: 16px;
   margin-right: 8px;
+  text-align: center;
 }
 
 .icon-upload-area {
