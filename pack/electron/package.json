@@ -36,6 +36,7 @@
       "icon": "icons/icon.ico",
       "target": [
         {"target": "nsis", "arch": ["x64", "arm64"]},
+        {"target": "msi", "arch": ["x64"]},
         {"target": "zip", "arch": ["x64"]}
       ]
     },
@@ -45,11 +46,17 @@
       "menuCategory": true,
       "allowElevation": true
     },
+    "msi": {
+      "oneClick": false,
+      "perMachine": true
+    },
     "linux": {
       "icon": "icons/icon.png",
       "category": "Utility",
       "target": [
-        {"target": "AppImage", "arch": ["x64", "arm64"]}
+        {"target": "AppImage", "arch": ["x64", "arm64"]},
+        {"target": "deb", "arch": ["x64", "arm64"]},
+        {"target": "rpm", "arch": ["x64", "arm64"]}
       ]
     },
     "snap": {

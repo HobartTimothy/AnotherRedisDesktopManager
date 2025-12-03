@@ -25,22 +25,8 @@
       <i class="connection-right-icon el-icon-menu" @click.stop></i>
       <el-dropdown-menu class='connection-menu-more-ul' slot="dropdown">
 
-
-        <el-dropdown-item @click.native='closeConnection'>
-          <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='showEditConnection'>
-          <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='deleteConnection'>
-          <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='duplicateConnection'>
-          <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
-        </el-dropdown-item>
-
         <!-- move to group submenu -->
-        <el-dropdown-item divided>
+        <el-dropdown-item>
           <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
             <div slot="reference" class="move-to-group-trigger">
               <span><i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}</span>
@@ -85,6 +71,19 @@
               </div>
             </div>
           </el-popover>
+        </el-dropdown-item>
+
+        <el-dropdown-item @click.native='closeConnection' divided>
+          <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
+        </el-dropdown-item>
+        <el-dropdown-item @click.native='showEditConnection'>
+          <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
+        </el-dropdown-item>
+        <el-dropdown-item @click.native='deleteConnection'>
+          <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
+        </el-dropdown-item>
+        <el-dropdown-item @click.native='duplicateConnection'>
+          <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
         </el-dropdown-item>
 
         <!-- menu color picker -->
