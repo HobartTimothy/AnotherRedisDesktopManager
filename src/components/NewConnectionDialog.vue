@@ -34,6 +34,17 @@
               <el-input v-model="connection.separator" autocomplete="off" placeholder='Empty To Disable Tree View'></el-input>
             </el-tooltip>
           </el-form-item>
+
+          <el-form-item :label="$t('message.connection_group')">
+            <el-select v-model="connection.groupKey" clearable :placeholder="$t('message.ungrouped')" style="width: 100%">
+              <el-option
+                v-for="group in groups"
+                :key="group.key"
+                :label="group.name"
+                :value="group.key">
+              </el-option>
+            </el-select>
+          </el-form-item>
         </el-col>
       </el-row>
 
@@ -206,6 +217,7 @@ export default {
         separator: ':',
         cluster: false,
         connectionReadOnly: false,
+        groupKey: '',
         sshOptions: {
           host: '',
           port: 22,
@@ -230,9 +242,13 @@ export default {
       sshOptionsShow: false,
       sslOptionsShow: false,
       sentinelOptionsShow: false,
+      groups: [],
     };
   },
   components: { FileInput, InputPassword },
+  created() {
+    this.loadGroups();
+  },
   props: {
     config: {
       default: _ => new Array(),
@@ -248,9 +264,20 @@ export default {
     },
   },
   methods: {
+    loadGroups() {
+      this.groups = storage.getGroups(true);
+    },
     show() {
+      this.loadGroups();
       this.dialogVisible = true;
       this.resetFields();
+    },
+    showWithGroup(groupKey) {
+      this.loadGroups();
+      this.dialogVisible = true;
+      this.resetFields();
+      // Set default group
+      this.connection.groupKey = groupKey || '';
     },
     resetFields() {
       // edit connection mode

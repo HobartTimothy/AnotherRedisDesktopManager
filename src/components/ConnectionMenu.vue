@@ -39,6 +39,32 @@
           <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
         </el-dropdown-item>
 
+        <!-- move to group submenu -->
+        <el-dropdown-item divided>
+          <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
+            <div slot="reference" style="width: 100%">
+              <i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}
+              <i class="el-icon-arrow-right" style="float: right; margin-top: 3px;"></i>
+            </div>
+            <div class="group-list">
+              <div class="group-item" @click="moveToGroup('')" v-if="config.groupKey">
+                <i class="fa fa-folder-o"></i>&nbsp;{{ $t('message.ungrouped') }}
+              </div>
+              <div
+                v-for="group in groups"
+                :key="group.key"
+                class="group-item"
+                :class="{ 'is-current': config.groupKey === group.key }"
+                @click="moveToGroup(group.key)">
+                <i class="fa fa-folder" :style="{ color: group.color }"></i>&nbsp;{{ group.name }}
+              </div>
+              <div v-if="groups.length === 0" class="no-groups">
+                {{ $t('message.no_groups') }}
+              </div>
+            </div>
+          </el-popover>
+        </el-dropdown-item>
+
         <!-- menu color picker -->
         <el-tooltip placement="right" effect="light">
           <el-color-picker
@@ -96,11 +122,13 @@ export default {
   data() {
     return {
       menuColor: '#409EFF',
+      groups: [],
     };
   },
   props: ['config', 'client'],
   components: { NewConnectionDialog },
   created() {
+    this.loadGroups();
     this.$bus.$on('duplicateConnection', (newConfig) => {
       // not self
       if (this.config.name !== newConfig.name) {
@@ -394,6 +422,20 @@ export default {
     changeColor(color) {
       this.$emit('changeColor', color);
     },
+    loadGroups() {
+      this.groups = storage.getGroups(true);
+    },
+    moveToGroup(groupKey) {
+      if (this.config.groupKey === groupKey) {
+        return;
+      }
+      storage.moveConnectionToGroup(this.config, groupKey);
+      this.$bus.$emit('refreshConnections');
+      this.$message.success({
+        message: this.$t('message.modify_success'),
+        duration: 1000,
+      });
+    },
   },
 };
 </script>
@@ -450,5 +492,36 @@ export default {
 
   .font-weight-bold {
     font-weight: bold;
+  }
+
+  /* Move to group popover styles */
+  .move-to-group-popover {
+    padding: 0 !important;
+    min-width: 120px;
+  }
+  .move-to-group-popover .group-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .move-to-group-popover .group-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .move-to-group-popover .group-item:hover {
+    background: #f0f2f5;
+  }
+  .dark-mode .move-to-group-popover .group-item:hover {
+    background: #3a4a54;
+  }
+  .move-to-group-popover .group-item.is-current {
+    color: #409EFF;
+    font-weight: bold;
+  }
+  .move-to-group-popover .no-groups {
+    padding: 16px;
+    text-align: center;
+    color: #909399;
+    font-size: 12px;
   }
 </style>

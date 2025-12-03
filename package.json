@@ -5,9 +5,9 @@
   "author": "qii404",
   "private": true,
   "scripts": {
-    "dev": "webpack serve --mode development --progress --config build/webpack.dev.conf.js",
+    "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider webpack serve --mode development --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
-    "build": "node build/build.js",
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider node build/build.js",
     "electron": "cross-env ARDM_ENV=development electron pack/electron",
     "lint": "eslint --ext js,vue src --fix",
     "lint:init": "eslint --init",

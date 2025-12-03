@@ -99,10 +99,19 @@
             </el-form-item>
           </el-col>
           <el-col :sm="12" :lg="12">
-            <!-- export connections -->
+            <!-- sync mode selection -->
             <el-form-item :label="$t('message.config_connections')">
-              <el-button icon="el-icon-upload2" @click="exportConnection">{{ $t('message.export') }}</el-button>
-              <el-button icon="el-icon-download" @click="showImportDialog">{{ $t('message.import') }}</el-button>
+              <el-select v-model="s3Config.syncMode" @change="onSyncModeChange" style="width: 120px;">
+                <el-option value="manual" :label="$t('message.sync_mode_manual')"></el-option>
+                <el-option value="s3" :label="$t('message.sync_mode_s3')"></el-option>
+              </el-select>
+              <template v-if="s3Config.syncMode === 'manual'">
+                <el-button icon="el-icon-upload2" @click="exportConnection">{{ $t('message.export') }}</el-button>
+                <el-button icon="el-icon-download" @click="showImportDialog">{{ $t('message.import') }}</el-button>
+              </template>
+              <template v-else>
+                <el-button icon="el-icon-setting" @click="showS3ConfigDialog">{{ $t('message.s3_config') }}</el-button>
+              </template>
             </el-form-item>
           </el-col>
         </el-row>
@@ -147,6 +156,72 @@
       </div>
     </el-dialog>
 
+    <!-- S3 Config Dialog -->
+    <el-dialog
+      width="600px"
+      :title="$t('message.s3_config')"
+      :visible.sync="s3ConfigDialogVisible"
+      append-to-body>
+      <el-form label-position="top" size="small">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item :label="$t('message.s3_endpoint')" required>
+              <el-input v-model="s3Config.endpoint" placeholder="https://s3.amazonaws.com"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="$t('message.s3_region')">
+              <el-input v-model="s3Config.region" placeholder="us-east-1"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="Access Key ID" required>
+              <el-input v-model="s3Config.accessKeyId" placeholder="Access Key ID"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="Secret Access Key" required>
+              <el-input v-model="s3Config.secretAccessKey" type="password" show-password placeholder="Secret Access Key"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item :label="$t('message.s3_bucket')" required>
+              <el-input v-model="s3Config.bucket" placeholder="my-bucket"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="$t('message.s3_prefix')">
+              <el-input v-model="s3Config.prefix" placeholder="ardm-sync/"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item :label="$t('message.s3_parallelism')">
+              <el-input-number v-model="s3Config.parallelism" :min="1" :max="16" :step="1"></el-input-number>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="testS3Connection" :loading="s3Testing">
+          <i class="el-icon-connection"></i> {{ $t('message.s3_test_connection') }}
+        </el-button>
+        <el-button type="warning" @click="s3Download" :loading="s3Syncing">
+          <i class="el-icon-download"></i> {{ $t('message.s3_download') }}
+        </el-button>
+        <el-button type="primary" @click="s3Upload" :loading="s3Syncing">
+          <i class="el-icon-upload2"></i> {{ $t('message.s3_upload') }}
+        </el-button>
+        <el-button @click="saveS3Config">{{ $t('message.save') }}</el-button>
+      </div>
+    </el-dialog>
+
     <div slot="footer" class="dialog-footer">
       <el-button @click="visible = false">{{ $t('el.messagebox.cancel') }}</el-button>
       <el-button type="primary" @click="saveSettings">{{ $t('el.messagebox.confirm') }}</el-button>
@@ -159,6 +234,7 @@
 import storage from '@/storage.js';
 import { ipcRenderer } from 'electron';
 import LanguageSelector from '@/components/LanguageSelector';
+import S3SyncService from '@/s3Sync.js';
 
 export default {
   data() {
@@ -177,6 +253,20 @@ export default {
       allFonts: [],
       loadingFonts: false,
       themeMode: 'system',
+      // S3 sync related
+      s3Config: {
+        syncMode: 'manual',
+        endpoint: '',
+        region: 'us-east-1',
+        accessKeyId: '',
+        secretAccessKey: '',
+        bucket: '',
+        parallelism: 4,
+        prefix: 'ardm-sync/',
+      },
+      s3ConfigDialogVisible: false,
+      s3Testing: false,
+      s3Syncing: false,
     };
   },
   components: { LanguageSelector },
@@ -203,8 +293,10 @@ export default {
       if (!Object.keys(this.themeList).includes(theme)) {
         theme = 'system';
       }
-
       this.themeMode = theme;
+
+      // S3 config
+      this.s3Config = storage.getS3Config();
     },
     saveSettings() {
       storage.saveSettings(this.form);
@@ -299,6 +391,96 @@ export default {
     },
     showHotkeys() {
       this.$parent.$refs.hotKeysDialog.show();
+    },
+    // S3 Sync methods
+    onSyncModeChange() {
+      storage.saveS3Config(this.s3Config);
+    },
+    showS3ConfigDialog() {
+      this.s3ConfigDialogVisible = true;
+    },
+    saveS3Config() {
+      storage.saveS3Config(this.s3Config);
+      this.$message.success({
+        message: this.$t('message.modify_success'),
+        duration: 1000,
+      });
+      this.s3ConfigDialogVisible = false;
+    },
+    async testS3Connection() {
+      if (!this.validateS3Config()) return;
+
+      this.s3Testing = true;
+      try {
+        const s3Service = new S3SyncService(this.s3Config);
+        const result = await s3Service.testConnection();
+        if (result.success) {
+          this.$message.success(this.$t('message.s3_connection_success'));
+        } else {
+          this.$message.error(`${this.$t('message.s3_connection_failed')}: ${result.error}`);
+        }
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_connection_failed')}: ${error.message}`);
+      } finally {
+        this.s3Testing = false;
+      }
+    },
+    async s3Upload() {
+      if (!this.validateS3Config()) return;
+
+      this.$confirm(this.$t('message.s3_upload_confirm')).then(async () => {
+        this.s3Syncing = true;
+        try {
+          const s3Service = new S3SyncService(this.s3Config);
+          await s3Service.upload();
+          this.$message.success(this.$t('message.s3_upload_success'));
+        } catch (error) {
+          this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
+        } finally {
+          this.s3Syncing = false;
+        }
+      }).catch(() => {});
+    },
+    async s3Download() {
+      if (!this.validateS3Config()) return;
+
+      this.$confirm(this.$t('message.s3_download_confirm')).then(async () => {
+        this.s3Syncing = true;
+        try {
+          const s3Service = new S3SyncService(this.s3Config);
+          const syncData = await s3Service.download();
+          s3Service.applyDownloadedData(syncData);
+
+          // Refresh connections
+          this.$bus.$emit('closeConnection');
+          this.$bus.$emit('refreshConnections');
+
+          this.$message.success(this.$t('message.s3_download_success'));
+        } catch (error) {
+          this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
+        } finally {
+          this.s3Syncing = false;
+        }
+      }).catch(() => {});
+    },
+    validateS3Config() {
+      if (!this.s3Config.endpoint) {
+        this.$message.warning(this.$t('message.s3_endpoint_required'));
+        return false;
+      }
+      if (!this.s3Config.accessKeyId) {
+        this.$message.warning(this.$t('message.s3_accesskey_required'));
+        return false;
+      }
+      if (!this.s3Config.secretAccessKey) {
+        this.$message.warning(this.$t('message.s3_secretkey_required'));
+        return false;
+      }
+      if (!this.s3Config.bucket) {
+        this.$message.warning(this.$t('message.s3_bucket_required'));
+        return false;
+      }
+      return true;
     },
   },
   mounted() {

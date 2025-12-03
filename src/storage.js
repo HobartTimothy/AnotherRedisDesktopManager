@@ -3,6 +3,107 @@ import utils from './util';
 const { randomString } = utils;
 
 export default {
+  // ==================== Connection Groups ====================
+  getGroups(returnList = false) {
+    let groups = localStorage.connectionGroups || '{}';
+    groups = JSON.parse(groups);
+
+    if (returnList) {
+      groups = Object.keys(groups).map(key => groups[key]);
+      this.sortGroups(groups);
+    }
+
+    return groups;
+  },
+  setGroups(groups) {
+    localStorage.connectionGroups = JSON.stringify(groups);
+  },
+  addGroup(group) {
+    const groups = this.getGroups();
+    const key = `group_${new Date().getTime()}_${randomString(5)}`;
+
+    // calculate order
+    const maxOrder = Math.max(0, ...Object.values(groups).map(item => (!isNaN(item.order) ? item.order : 0)));
+    group.order = maxOrder + 1;
+    group.key = key;
+
+    groups[key] = group;
+    this.setGroups(groups);
+
+    return group;
+  },
+  editGroup(group) {
+    const groups = this.getGroups();
+    if (groups[group.key]) {
+      groups[group.key] = { ...groups[group.key], ...group };
+      this.setGroups(groups);
+    }
+  },
+  deleteGroup(groupKey) {
+    const groups = this.getGroups();
+    delete groups[groupKey];
+    this.setGroups(groups);
+
+    // move connections in this group to ungrouped
+    const connections = this.getConnections();
+    for (const key in connections) {
+      if (connections[key].groupKey === groupKey) {
+        connections[key].groupKey = '';
+      }
+    }
+    this.setConnections(connections);
+  },
+  sortGroups(groups) {
+    groups.sort((a, b) => {
+      if (!isNaN(a.order) && !isNaN(b.order)) {
+        return parseInt(a.order) <= parseInt(b.order) ? -1 : 1;
+      }
+      return a.key < b.key ? -1 : 1;
+    });
+  },
+  reOrderGroups(groups = []) {
+    const newGroups = {};
+    for (const index in groups) {
+      const group = groups[index];
+      group.order = parseInt(index);
+      newGroups[group.key] = group;
+    }
+    this.setGroups(newGroups);
+    return newGroups;
+  },
+  moveConnectionToGroup(connection, groupKey) {
+    const connections = this.getConnections();
+    const key = this.getConnectionKey(connection);
+    if (connections[key]) {
+      connections[key].groupKey = groupKey || '';
+      this.setConnections(connections);
+    }
+  },
+  getConnectionsByGroup(groupKey = '') {
+    const connections = this.getConnections(true);
+    return connections.filter(conn => (conn.groupKey || '') === groupKey);
+  },
+  // ==================== Connection Groups End ====================
+
+  // ==================== S3 Sync Config ====================
+  getS3Config() {
+    let config = localStorage.getItem('s3Config');
+    return config ? JSON.parse(config) : {
+      syncMode: 'manual',
+      endpoint: '',
+      region: 'us-east-1',
+      accessKeyId: '',
+      secretAccessKey: '',
+      bucket: '',
+      parallelism: 4,
+      prefix: 'ardm-sync/',
+    };
+  },
+  saveS3Config(config) {
+    return localStorage.setItem('s3Config', JSON.stringify(config));
+  },
+  // ==================== S3 Sync Config End ====================
+
   getSetting(key) {
     let settings = localStorage.getItem('settings');
     settings = settings ? JSON.parse(settings) : {};

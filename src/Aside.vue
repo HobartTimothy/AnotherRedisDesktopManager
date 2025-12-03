@@ -1,13 +1,31 @@
 <template>
   <div class="aside-outer-container">
     <div>
-      <!-- new connection button -->
-      <div class="aside-top-container">
-        <el-button class='aside-setting-btn' type="primary" icon="el-icon-time" @click="$refs.commandLogDialog.show()" :title='$t("message.command_log")+" Ctrl+g"' plain></el-button>
-        <el-button class='aside-setting-btn' type="primary" icon="el-icon-setting" @click="$refs.settingDialog.show()" :title='$t("message.settings")+" Ctrl+,"' plain></el-button>
+      <!-- top bar with title and buttons -->
+      <div class="aside-top-container" @contextmenu.prevent="showContextMenu">
+        <div class="aside-title">
+          <i class="fa fa-database"></i>
+          <span>{{ $t('message.my_connections') }}</span>
+          <span class="connections-count">({{ connectionsCount }})</span>
+        </div>
+        <div class="aside-btns">
+          <el-button class='aside-setting-btn' type="primary" icon="el-icon-time" @click.stop="$refs.commandLogDialog.show()" :title='$t("message.command_log")+" Ctrl+g"' plain></el-button>
+          <el-button class='aside-setting-btn' type="primary" icon="el-icon-setting" @click.stop="$refs.settingDialog.show()" :title='$t("message.settings")+" Ctrl+,"' plain></el-button>
+        </div>
+      </div>
 
-        <div class="aside-new-connection-container">
-          <el-button class="aside-new-connection-btn" type="info" @click="addNewConnection" icon="el-icon-circle-plus" :title='$t("message.new_connection")+" Ctrl+n"'>{{ $t('message.new_connection') }}</el-button>
+      <!-- Right Click Menu -->
+      <div
+        v-show="contextMenuVisible"
+        class="aside-context-menu"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }">
+        <div class="menu-item" @click="addNewConnection">
+          <i class="el-icon-circle-plus"></i>
+          {{ $t('message.new_connection') }}
+        </div>
+        <div class="menu-item" @click="addNewGroup">
+          <i class="el-icon-folder-add"></i>
+          {{ $t('message.add_group') }}
         </div>
       </div>
 
@@ -43,17 +61,51 @@ import CustomFormatter from '@/components/CustomFormatter';
 
 export default {
   data() {
-    return {};
+    return {
+      contextMenuVisible: false,
+      menuX: 0,
+      menuY: 0,
+      connectionsCount: 0,
+    };
   },
   components: {
     Connections, NewConnectionDialog, Setting, CommandLog, HotKeys, CustomFormatter,
   },
+  created() {
+    document.addEventListener('click', this.hideContextMenu);
+    this.$bus.$on('refreshConnections', () => {
+      this.updateConnectionsCount();
+    });
+    this.$bus.$on('showNewConnectionWithGroup', (groupKey) => {
+      this.$refs.newConnectionDialog.showWithGroup(groupKey);
+    });
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.hideContextMenu);
+  },
   methods: {
+    updateConnectionsCount() {
+      this.connectionsCount = this.$refs.connections ? this.$refs.connections.connections.length : 0;
+    },
+    showContextMenu(e) {
+      this.menuX = e.clientX;
+      this.menuY = e.clientY;
+      this.contextMenuVisible = true;
+    },
+    hideContextMenu() {
+      this.contextMenuVisible = false;
+    },
     editConnectionFinished() {
       this.$refs.connections.initConnections();
+      this.updateConnectionsCount();
     },
     addNewConnection() {
+      this.hideContextMenu();
       this.$refs.newConnectionDialog.show();
+    },
+    addNewGroup() {
+      this.hideContextMenu();
+      this.$refs.connections.showAddGroupDialog();
     },
     initShortcut() {
       // new connection
@@ -79,28 +131,84 @@ export default {
   },
   mounted() {
     this.initShortcut();
+    this.$nextTick(() => {
+      this.updateConnectionsCount();
+    });
   },
 };
 </script>
 
 <style type="text/css">
   .aside-top-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 10px 8px;
+    border-bottom: 1px solid #e4e7ed;
+    cursor: pointer;
+    user-select: none;
+  }
+  .aside-top-container:hover {
+    background: #f5f7fa;
+  }
+  .dark-mode .aside-top-container {
+    border-bottom-color: #4a5a64;
+  }
+  .dark-mode .aside-top-container:hover {
+    background: #3a4a54;
+  }
+  .aside-top-container .aside-title {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .aside-top-container .aside-title i {
     margin-right: 8px;
+    color: #409EFF;
   }
-  .aside-top-container .aside-new-connection-container {
-    margin-right: 109px;
+  .aside-top-container .aside-title .connections-count {
+    margin-left: 4px;
+    color: #909399;
+    font-size: 12px;
+    font-weight: normal;
   }
-  .aside-new-connection-container .aside-new-connection-btn {
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .aside-top-container .aside-btns {
+    display: flex;
   }
   .aside-top-container .aside-setting-btn {
-    float: right;
-    width: 44px;
-    margin-right: 5px;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    margin-left: 4px;
   }
-
+  .aside-context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    min-width: 150px;
+  }
+  .dark-mode .aside-context-menu {
+    background: #2d3a40;
+    border-color: #4a5a64;
+  }
+  .aside-context-menu .menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .aside-context-menu .menu-item:hover {
+    background: #f0f2f5;
+  }
+  .dark-mode .aside-context-menu .menu-item:hover {
+    background: #3a4a54;
+  }
+  .aside-context-menu .menu-item i {
+    margin-right: 8px;
+  }
   .dark-mode .aside-top-container .el-button--info {
     color: #52a6fd;
     background: inherit;
