@@ -36,6 +36,10 @@ export default {
     changeLang(lang) {
       localStorage.lang = this.selectedLang;
       this.$i18n.locale = this.selectedLang;
+      // 触发界面更新
+      this.$nextTick(() => {
+        this.$forceUpdate();
+      });
     },
   },
   mounted() {
