@@ -220,13 +220,7 @@
                     {{ $t('message.more_actions') }} <i class="el-icon-arrow-down"></i>
                   </el-button>
                   <el-dropdown-menu slot="dropdown">
-                    <el-dropdown-item command="import">
-                      <i class="el-icon-upload2"></i> {{ $t('message.import') }}
-                    </el-dropdown-item>
-                    <el-dropdown-item command="export" :disabled="decoders.length === 0">
-                      <i class="el-icon-download"></i> {{ $t('message.export') }}
-                    </el-dropdown-item>
-                    <el-dropdown-item divided command="enableAll" :disabled="decoders.length === 0">
+                    <el-dropdown-item command="enableAll" :disabled="decoders.length === 0">
                       <i class="el-icon-open"></i> {{ $t('message.enable_all') }}
                     </el-dropdown-item>
                     <el-dropdown-item command="disableAll" :disabled="decoders.length === 0">
@@ -462,29 +456,6 @@
       </div>
     </el-dialog>
     
-    <!-- Import Decoder Dialog -->
-    <el-dialog
-      :title="$t('message.import_decoder')"
-      :visible.sync="importDecoderDialogVisible"
-      width="400px"
-      append-to-body>
-      <el-upload
-        ref="decoderUpload"
-        :auto-upload="false"
-        :multiple="false"
-        action=""
-        :limit="1"
-        :on-change="loadDecoderFile"
-        drag>
-        <i class="el-icon-upload"></i>
-        <div class="el-upload__text">{{ $t('message.put_file_here') }}</div>
-      </el-upload>
-      <div slot="footer">
-        <el-button @click="importDecoderDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
-        <el-button type="primary" @click="importDecoders">{{ $t('el.messagebox.confirm') }}</el-button>
-      </div>
-    </el-dialog>
-    
     <!-- Import Data Dialog -->
     <el-dialog
       :title="$t('message.import_data')"
@@ -561,9 +532,6 @@ export default {
       testOutput: '',
       testError: '',
       testing: false,
-      // Import
-      importDecoderDialogVisible: false,
-      importDecoderContent: '',
       // Data Sync
       importDataDialogVisible: false,
       importDataContent: '',
@@ -842,12 +810,6 @@ export default {
     // Batch operations
     handleDecoderCommand(command) {
       switch (command) {
-        case 'import':
-          this.importDecoderDialogVisible = true;
-          break;
-        case 'export':
-          this.exportDecoders();
-          break;
         case 'enableAll':
           this.decoders.forEach(d => d.enabled = true);
           storage.saveDecoders(this.decoders);
@@ -856,44 +818,6 @@ export default {
           this.decoders.forEach(d => d.enabled = false);
           storage.saveDecoders(this.decoders);
           break;
-      }
-    },
-    exportDecoders() {
-      const data = JSON.stringify(this.decoders, null, 2);
-      this.$util.createAndDownloadFile('decoders.json', data);
-      this.$message.success(this.$t('message.export_success'));
-    },
-    loadDecoderFile(file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        this.importDecoderContent = event.target.result;
-      };
-      reader.readAsText(file.raw);
-    },
-    importDecoders() {
-      try {
-        const imported = JSON.parse(this.importDecoderContent);
-        if (!Array.isArray(imported)) {
-          throw new Error('Invalid format');
-        }
-        // Merge with existing decoders
-        imported.forEach(decoder => {
-          if (decoder.name && decoder.decoderPath) {
-            // Check if already exists
-            const exists = this.decoders.find(d => d.name === decoder.name);
-            if (!exists) {
-              this.decoders.push(decoder);
-            }
-          }
-        });
-        this.importDecoderDialogVisible = false;
-        this.importDecoderContent = '';
-        if (this.$refs.decoderUpload) {
-          this.$refs.decoderUpload.clearFiles();
-        }
-        this.$message.success(this.$t('message.import_success'));
-      } catch (err) {
-        this.$message.error(this.$t('message.import_failed') + ': ' + err.message);
       }
     },
     // Data Sync Methods
