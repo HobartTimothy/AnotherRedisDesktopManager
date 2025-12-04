@@ -135,7 +135,7 @@
 
 <script type="text/javascript">
 import storage from '@/storage.js';
-import { remote } from 'electron';
+import { dialog, getCurrentWindow } from '@electron/remote';
 import NewConnectionDialog from '@/components/NewConnectionDialog';
 import splitargs from '@qii404/redis-splitargs';
 
@@ -294,7 +294,7 @@ export default {
       this.$bus.$emit('slowLog', this.client, this.config.connectionName);
     },
     importKeys() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      dialog.showOpenDialog(getCurrentWindow(), {
         properties: ['openFile'],
       }).then((reply) => {
         if (reply.canceled) {
@@ -359,7 +359,7 @@ export default {
       });
     },
     execFileCMDS() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      dialog.showOpenDialog(getCurrentWindow(), {
         properties: ['openFile'],
       }).then((reply) => {
         if (reply.canceled) {

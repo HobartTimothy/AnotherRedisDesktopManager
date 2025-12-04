@@ -8,8 +8,6 @@ function resolve (dir) {
   return path.join(__dirname, '..', dir)
 }
 
-
-
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   context: path.resolve(__dirname, '../'),
@@ -30,6 +28,11 @@ module.exports = {
       'vue$': 'vue/dist/vue.esm.js',
       '@': resolve('src'),
     }
+  },
+  externals: {
+    // native/optional bindings loaded at runtime
+    'cpu-features': 'commonjs cpu-features',
+    ssh2: 'commonjs ssh2',
   },
   module: {
     rules: [
@@ -57,21 +60,31 @@ module.exports = {
         // ],
       },
       {
-        test: /\.js$/,
-        loader: 'babel-loader',
+        test: /\.c?m?js$/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            cacheDirectory: true,
+          },
+        },
         include: [
-          // resolve('src'),
-          // resolve('test'),
-          // resolve('node_modules/webpack-dev-server/client'),
-          resolve('node_modules/pickleparser')
+          resolve('src'),
+          resolve('test'),
+          resolve('node_modules/pickleparser'),
+          resolve('node_modules/rawproto'),
         ]
+      },
+      {
+        test: /rawproto\.cjs$/,
+        type: 'javascript/auto',
       },
       {
         test: /\.(png|jpe?g|gif|svg)(\?.*)?$/,
         loader: 'url-loader',
         options: {
           limit: 10000,
-          name: utils.assetsPath('img/[name].[hash:7].[ext]')
+          name: utils.assetsPath('img/[name].[hash:7].[ext]'),
+          esModule: false,
         }
       },
       {
@@ -79,32 +92,19 @@ module.exports = {
         loader: 'url-loader',
         options: {
           limit: 10000,
-          name: utils.assetsPath('media/[name].[hash:7].[ext]')
+          name: utils.assetsPath('media/[name].[hash:7].[ext]'),
+          esModule: false,
         }
       },
       {
         test: /\.(woff2?|eot|ttf|otf)(\?.*)?$/,
-        loader: 'url-loader',
-        options: {
-          limit: 10000,
-          name: utils.assetsPath('fonts/[name].[hash:7].[ext]'),
-          // this is vital important for fonts loads, added before 'static/fonts'
-          publicPath: '../../'
-        }
+        type: 'asset/resource',
+        generator: {
+          filename: utils.assetsPath('fonts/[name].[hash:7][ext]'),
+          publicPath: '../../',
+        },
       },
 
     ]
-  },
-  node: {
-    // prevent webpack from injecting useless setImmediate polyfill because Vue
-    // source contains it (although only uses it if it's native).
-    setImmediate: false,
-    // prevent webpack from injecting mocks to Node native modules
-    // that does not make sense for the client
-    dgram: 'empty',
-    fs: 'empty',
-    net: 'empty',
-    tls: 'empty',
-    child_process: 'empty'
   }
 }

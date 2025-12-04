@@ -241,6 +241,26 @@ export default {
 </script>
 
 <style type="text/css">
+/* Design tokens */
+:root {
+  --app-accent: #22d3ee;
+  --app-accent-strong: #0ea5e9;
+  --app-bg: #f5f7fb;
+  --app-surface: #ffffff;
+  --app-muted: #6b7280;
+  --app-ink: #1f2937;
+  --app-border: #e5e7eb;
+}
+.dark-mode {
+  --app-accent: #38bdf8;
+  --app-accent-strong: #0ea5e9;
+  --app-bg: #0b1220;
+  --app-surface: #0f172a;
+  --app-muted: #9ca3af;
+  --app-ink: #e5e7eb;
+  --app-border: #1f2937;
+}
+
 html {
   height: 100%;
 }
@@ -250,16 +270,23 @@ body {
   margin: 0;
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
+  font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  background: radial-gradient(120% 120% at 10% 20%, #e0f2fe 0%, #f8fafc 35%, #f5f7fb 70%, #edf1f7 100%);
+  color: var(--app-ink);
 
   /*fix body scroll-y caused by tooltip in table*/
   overflow: hidden;
+}
+.dark-mode body {
+  background: radial-gradient(120% 120% at 15% 20%, rgba(56, 189, 248, 0.08) 0%, #0b1220 45%, #0b1220 100%);
+  color: var(--app-ink);
 }
 
 button, input, textarea, .vjs__tree {
   font-family: inherit !important;
 }
 a {
-  color: #8e8d8d;
+  color: var(--app-muted);
 }
 
 
@@ -318,27 +345,25 @@ li .list-index {
 
 .wrap-container {
   height: 100%;
+  background: transparent;
 }
 
 /* Nav Icon Bar Styles */
 .nav-icon-bar {
-  width: 140px;
-  min-width: 140px;
+  width: 148px;
+  min-width: 148px;
   height: 100%;
-  background: #f5f7fa;
-  border-right: 1px solid #e4e7ed;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   transition: width 0.2s, min-width 0.2s;
+  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.08);
 }
 .nav-icon-bar.collapsed {
-  width: 48px;
-  min-width: 48px;
-}
-.dark-mode .nav-icon-bar {
-  background: #1e2d35;
-  border-right-color: #4a5a64;
+  width: 56px;
+  min-width: 56px;
 }
 .nav-icon-bar .nav-top {
   display: flex;
@@ -361,7 +386,7 @@ li .list-index {
   cursor: pointer;
   border-radius: 8px;
   margin: 2px 0;
-  color: #606266;
+  color: var(--app-muted);
   font-size: 14px;
   transition: all 0.2s;
   white-space: nowrap;
@@ -377,20 +402,15 @@ li .list-index {
   margin-left: 10px;
   font-size: 13px;
 }
-.dark-mode .nav-icon-bar .nav-icon-item {
-  color: #b0bec5;
-}
 .nav-icon-bar .nav-icon-item:hover {
-  background: #e4e7ed;
-  color: #409EFF;
-}
-.dark-mode .nav-icon-bar .nav-icon-item:hover {
-  background: #3a4a54;
-  color: #409EFF;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--app-ink);
+  transform: translateX(2px);
 }
 .nav-icon-bar .nav-icon-item.active {
-  background: #409EFF;
-  color: #fff;
+  background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-accent-strong) 100%);
+  color: #0f172a;
+  box-shadow: 0 6px 24px rgba(34, 211, 238, 0.22);
 }
 .nav-icon-bar.collapsed .nav-icon-item {
   justify-content: center;
@@ -409,8 +429,8 @@ li .list-index {
   padding: 8px 8px 12px 8px;
 }
 .nav-logo {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
 }
 
@@ -421,19 +441,14 @@ li .list-index {
   justify-content: center;
   cursor: pointer;
   padding: 4px;
-  border-radius: 4px;
-  color: #909399;
+  border-radius: 6px;
+  color: var(--app-muted);
+  border: 1px solid var(--app-border);
+  background: rgba(0, 0, 0, 0.02);
 }
 .nav-toggle-btn:hover {
-  background: #e4e7ed;
-  color: #409EFF;
-}
-.dark-mode .nav-toggle-btn {
-  color: #b0bec5;
-}
-.dark-mode .nav-toggle-btn:hover {
-  background: #3a4a54;
-  color: #409EFF;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--app-ink);
 }
 .nav-toggle-btn svg {
   display: block;
@@ -447,8 +462,10 @@ li .list-index {
 .aside-connection {
   height: 100%;
   width: 100% !important;
-  border-right: 1px solid #e4e0e0;
+  border-right: 1px solid var(--app-border);
   overflow: hidden;
+  background: var(--app-surface);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.02);
 }
 /*fix right container imdraggable*/
 .right-main-container {
@@ -458,6 +475,7 @@ li .list-index {
   overflow-y: hidden;
   padding-top: 0px;
   padding-right: 4px;
+  background: var(--app-bg);
 }
 
 /* Command Log Full Page */
@@ -465,6 +483,7 @@ li .list-index {
   flex: 1;
   height: 100%;
   overflow: hidden;
+  background: var(--app-bg);
 }
 
 .el-message-box .el-message-box__message {
@@ -485,14 +504,16 @@ li .list-index {
   height: 100%;
   width: 10px;
   cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 #drag-resize-pointer::after {
   content: "";
   display: inline-block;
   width: 2px;
   height: 20px;
-  border-left: 1px solid #adabab;
-  border-right: 1px solid #adabab;
+  border-left: 1px solid rgba(148, 163, 184, 0.6);
+  border-right: 1px solid rgba(148, 163, 184, 0.6);
 
   position: absolute;
   top: 0;
@@ -500,9 +521,8 @@ li .list-index {
   bottom: 0;
   margin: auto;
 }
-.dark-mode #drag-resize-pointer::after {
-  border-left: 1px solid #b9b8b8;
-  border-right: 1px solid #b9b8b8;
+.aside-drag-container:hover #drag-resize-pointer {
+  opacity: 1;
 }
 
 @keyframes rotate {
@@ -526,18 +546,19 @@ html .dark-mode {
 /* Settings Menu */
 .settings-menu {
   position: fixed;
-  background: #fff;
-  border: 1px solid #e4e7ed;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
   z-index: 9999;
   min-width: 160px;
   transform: translateY(-100%);
   padding: 4px 0;
 }
 .dark-mode .settings-menu {
-  background: #2d3a40;
-  border-color: #4a5a64;
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .settings-menu .menu-item {
   padding: 10px 16px;
@@ -545,10 +566,10 @@ html .dark-mode {
   font-size: 13px;
   display: flex;
   align-items: center;
-  color: #606266;
+  color: var(--app-ink);
 }
 .dark-mode .settings-menu .menu-item {
-  color: #b0bec5;
+  color: #e5e7eb;
 }
 .settings-menu .menu-item i {
   width: 16px;
@@ -556,18 +577,18 @@ html .dark-mode {
   text-align: center;
 }
 .settings-menu .menu-item:hover {
-  background: #f0f2f5;
+  background: rgba(34, 211, 238, 0.12);
 }
 .dark-mode .settings-menu .menu-item:hover {
-  background: #3a4a54;
+  background: rgba(56, 189, 248, 0.12);
 }
 .settings-menu .menu-divider {
   height: 1px;
-  background: #e4e7ed;
+  background: rgba(148, 163, 184, 0.4);
   margin: 4px 0;
 }
 .dark-mode .settings-menu .menu-divider {
-  background: #4a5a64;
+  background: rgba(148, 163, 184, 0.2);
 }
 
 /* About Dialog */
@@ -579,6 +600,7 @@ html .dark-mode {
 }
 .about-content {
   text-align: center;
+  color: var(--app-ink);
 }
 .about-logo {
   width: 100px;

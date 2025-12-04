@@ -3,14 +3,14 @@ const path = require('path')
 const utils = require('./utils')
 const webpack = require('webpack')
 const config = require('../config')
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 const baseWebpackConfig = require('./webpack.base.conf')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 // const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
-const OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
@@ -68,13 +68,6 @@ const webpackConfig = merge(baseWebpackConfig, {
       filename: utils.assetsPath('css/[name].css'),
       chunkFilename: utils.assetsPath('css/[name].[contenthash].css')
     }),
-    // Compress extracted CSS. We are using this plugin so that possible
-    // duplicated CSS from different components can be deduped.
-    new OptimizeCSSPlugin({
-      cssProcessorOptions: config.build.productionSourceMap
-        ? { safe: true, map: { inline: false } }
-        : { safe: true }
-    }),
     // generate dist index.html with correct asset hash for caching.
     // you can customize output by editing /index.html
     // see https://github.com/ampedandwired/html-webpack-plugin
@@ -93,9 +86,9 @@ const webpackConfig = merge(baseWebpackConfig, {
       // chunksSortMode: 'dependency'
     }),
     // keep module.id stable when vendor modules does not change
-    new webpack.HashedModuleIdsPlugin(),
-    // enable scope hoisting
-    // new webpack.optimize.ModuleConcatenationPlugin(),
+    // deterministic ids for long-term caching
+    // https://webpack.js.org/configuration/optimization/#optimizationmoduleids
+    // moduleIds set below in optimization
     // split vendor js into its own file
     // new webpack.optimize.CommonsChunkPlugin({
     //   name: 'vendor',
@@ -127,31 +120,27 @@ const webpackConfig = merge(baseWebpackConfig, {
     // }),
 
     // copy custom static assets
-    new CopyWebpackPlugin([
-      {
-        from: path.resolve(__dirname, '../static'),
-        to: config.build.assetsSubDirectory,
-        ignore: ['.*']
-      }
-    ])
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, '../static'),
+          to: config.build.assetsSubDirectory,
+          globOptions: { ignore: ['**/.*'] }
+        }
+      ]
+    })
   ],
   optimization: {
+    moduleIds: 'deterministic',
     runtimeChunk: {
       name: 'manifest'
     },
     minimizer: [
-      new UglifyJsPlugin({
-        cache: true,
+      new TerserPlugin({
         parallel: true,
-        sourceMap: config.build.productionSourceMap,
-        uglifyOptions: {
-          warnings: false
-        },
       }),
-      new OptimizeCSSPlugin({
-        cssProcessorOptions: config.build.productionSourceMap
-          ? { safe: true, map: { inline: false } }
-          : { safe: true }
+      new CssMinimizerPlugin({
+        parallel: true,
       }),
     ],
     splitChunks: {

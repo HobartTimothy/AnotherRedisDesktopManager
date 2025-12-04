@@ -12,7 +12,7 @@
 </template>
 
 <script type="text/javascript">
-import { remote } from 'electron';
+import { dialog, getCurrentWindow } from '@electron/remote';
 
 export default {
   props: {
@@ -30,7 +30,7 @@ export default {
       e.target.blur();
     },
     showFileSelector() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      dialog.showOpenDialog(getCurrentWindow(), {
         securityScopedBookmarks: true,
         properties: ['openFile', 'showHiddenFiles'],
       }).then((reply) => {

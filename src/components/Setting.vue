@@ -484,7 +484,8 @@
 
 <script type="text/javascript">
 import storage from '@/storage.js';
-import { ipcRenderer, remote } from 'electron';
+import { ipcRenderer } from 'electron';
+import { dialog } from '@electron/remote';
 import { spawn } from 'child_process';
 import LanguageSelector from '@/components/LanguageSelector';
 import S3SyncService from '@/s3Sync.js';
@@ -720,7 +721,6 @@ export default {
       this.decoderForm[key].splice(index, 1);
     },
     selectDecoderPath() {
-      const dialog = remote.dialog;
       dialog.showOpenDialog({
         properties: ['openFile'],
       }).then(result => {

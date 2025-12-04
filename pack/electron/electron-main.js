@@ -5,6 +5,9 @@ const {
 const url = require('url');
 const path = require('path');
 const fontManager = require('./font-manager');
+const { initialize: initRemote, enable: enableRemote } = require('@electron/remote/main');
+
+initRemote();
 const winState = require('./win-state');
 
 // disable GPU for some white screen issues
@@ -12,6 +15,8 @@ const winState = require('./win-state');
 // app.commandLine.appendSwitch('disable-gpu');
 
 global.APP_ENV = (process.env.ARDM_ENV === 'development') ? 'development' : 'production';
+const DEV_SERVER_PORT = process.env.DEV_SERVER_PORT || process.env.PORT || '9988';
+const DEV_SERVER_HOST = process.env.DEV_SERVER_HOST || 'localhost';
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -53,8 +58,6 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
-      // add this to keep 'remote' module avaiable. Tips: it will be removed in electron 14
-      enableRemoteModule: true,
       contextIsolation: false,
     },
   });
@@ -64,6 +67,9 @@ function createWindow() {
   }
 
   winState.watchClose(mainWindow);
+
+  // enable @electron/remote for renderer
+  enableRemote(mainWindow.webContents);
 
   // and load the index.html of the app.
   if (APP_ENV === 'production') {
@@ -76,7 +82,7 @@ function createWindow() {
   } else {
     mainWindow.loadURL(url.format({
       protocol: 'http',
-      host: 'localhost:9988',
+      host: `${DEV_SERVER_HOST}:${DEV_SERVER_PORT}`,
       query: {version: app.getVersion(), dark: nativeTheme.shouldUseDarkColors},
     }));
   }

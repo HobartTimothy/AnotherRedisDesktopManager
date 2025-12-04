@@ -2,12 +2,11 @@
 const utils = require('./utils')
 const webpack = require('webpack')
 const config = require('../config')
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 const path = require('path')
 const baseWebpackConfig = require('./webpack.base.conf')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const FriendlyErrorsPlugin = require('friendly-errors-webpack-plugin')
 const portfinder = require('portfinder')
 
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
@@ -15,6 +14,12 @@ const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 const HOST = process.env.HOST
 const PORT = process.env.PORT && Number(process.env.PORT)
+const proxyTable = config.dev.proxyTable || {}
+const proxyConfig = Array.isArray(proxyTable)
+  ? proxyTable
+  : Object.entries(proxyTable).map(([context, target]) =>
+      typeof target === 'string' ? { context, target } : { context, ...target }
+    )
 
 const devWebpackConfig = merge(baseWebpackConfig, {
   mode: 'development',
@@ -26,27 +31,28 @@ const devWebpackConfig = merge(baseWebpackConfig, {
 
   // these devServer options should be customized in /config/index.js
   devServer: {
-    clientLogLevel: 'warning',
     historyApiFallback: {
       rewrites: [
         { from: /.*/, to: path.posix.join(config.dev.assetsPublicPath, 'index.html') },
       ],
     },
     hot: true,
-    contentBase: false, // since we use CopyWebpackPlugin.
+    static: false, // assets are copied by CopyWebpackPlugin
     compress: true,
     host: HOST || config.dev.host,
     port: PORT || config.dev.port,
     open: config.dev.autoOpenBrowser,
-    overlay: config.dev.errorOverlay
-      ? { warnings: false, errors: true }
-      : false,
-    publicPath: config.dev.assetsPublicPath,
-    proxy: config.dev.proxyTable,
-    quiet: true, // necessary for FriendlyErrorsPlugin
-    watchOptions: {
-      poll: config.dev.poll,
-    }
+    client: {
+      logging: 'warn',
+      overlay: config.dev.errorOverlay
+        ? { warnings: false, errors: true }
+        : false,
+    },
+    devMiddleware: {
+      publicPath: config.dev.assetsPublicPath,
+    },
+    proxy: proxyConfig,
+    allowedHosts: 'all',
   },
   plugins: [
     new VueLoaderPlugin(),
@@ -64,13 +70,15 @@ const devWebpackConfig = merge(baseWebpackConfig, {
       inject: true
     }),
     // copy custom static assets
-    new CopyWebpackPlugin([
-      {
-        from: path.resolve(__dirname, '../static'),
-        to: config.dev.assetsSubDirectory,
-        ignore: ['.*']
-      }
-    ])
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: path.resolve(__dirname, '../static'),
+          to: config.dev.assetsSubDirectory,
+          globOptions: { ignore: ['**/.*'] },
+        },
+      ],
+    })
   ]
 })
 
@@ -84,16 +92,6 @@ module.exports = new Promise((resolve, reject) => {
       process.env.PORT = port
       // add port to devServer config
       devWebpackConfig.devServer.port = port
-
-      // Add FriendlyErrorsPlugin
-      devWebpackConfig.plugins.push(new FriendlyErrorsPlugin({
-        compilationSuccessInfo: {
-          messages: [`Your application is running here: http://${devWebpackConfig.devServer.host}:${port}`],
-        },
-        onErrors: config.dev.notifyOnErrors
-        ? utils.createNotifierCallback()
-        : undefined
-      }))
 
       resolve(devWebpackConfig)
     }
