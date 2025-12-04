@@ -31,17 +31,30 @@
       </div>
 
       <!-- About Dialog -->
-      <el-dialog :visible.sync="aboutDialogVisible" width="420px" :append-to-body="true" :show-close="true" custom-class="about-dialog">
+      <el-dialog :visible.sync="aboutDialogVisible" width="480px" :append-to-body="true" :show-close="true" custom-class="about-dialog">
         <div class="about-content">
-          <img src="./assets/applogo.png" class="about-logo" alt="logo" />
-          <h2 class="about-title">Another Redis Desktop Manager</h2>
-          <p class="about-version">v{{ appVersion }}</p>
-          <div class="about-links">
-            <a href="#" @click.prevent="openGitHub">{{ $t('message.source_code') }}</a>
-            <span class="link-divider">|</span>
-            <a href="#" @click.prevent="openGuide">{{ $t('message.official_site') }}</a>
+          <div class="about-badge">
+            <img src="./assets/applogo.png" class="about-logo" alt="logo" />
+            <div class="about-glow"></div>
           </div>
-          <p class="about-copyright">Copyright © 2025 HobartTimothy. All rights reserved</p>
+          <div class="about-text">
+            <h2 class="about-title">Another Redis Desktop Manager</h2>
+            <p class="about-version">v{{ appVersion }}</p>
+            <p class="about-tagline">{{ $t('message.about') }}</p>
+          </div>
+          <div class="about-actions">
+            <el-button type="primary" round @click="openGitHub">
+              <i class="fa fa-github"></i> {{ $t('message.source_code') }}
+            </el-button>
+            <el-button round plain @click="openGuide">
+              <i class="fa fa-book"></i> {{ $t('message.user_guide') }}
+            </el-button>
+          </div>
+          <div class="about-footnote">
+            <span>Redis · Desktop · Productivity</span>
+            <span class="dot">•</span>
+            <span>Copyright © 2025 HobartTimothy</span>
+          </div>
         </div>
       </el-dialog>
 
@@ -596,49 +609,103 @@ html .dark-mode {
   display: none;
 }
 .about-dialog .el-dialog__body {
-  padding: 40px 30px 30px;
+  padding: 32px 34px 28px;
+  background: linear-gradient(135deg, var(--app-surface), rgba(255, 255, 255, 0.92));
+  border-radius: 16px;
+}
+.dark-mode .about-dialog .el-dialog__body {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(16, 24, 40, 0.86));
 }
 .about-content {
   text-align: center;
   color: var(--app-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.about-badge {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  display: grid;
+  place-items: center;
 }
 .about-logo {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 24px;
+  width: 82px;
+  height: 82px;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(34, 211, 238, 0.22);
+  z-index: 2;
+}
+.about-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  background: radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.4), transparent 60%),
+              radial-gradient(circle at 70% 70%, rgba(14, 165, 233, 0.45), transparent 60%);
+  filter: blur(18px);
+  z-index: 1;
+}
+.about-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .about-title {
-  margin: 0 0 12px 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #303133;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-ink);
+  letter-spacing: -0.2px;
 }
 .dark-mode .about-title {
-  color: #e0e0e0;
+  color: #e5e7eb;
 }
 .about-version {
-  margin: 0 0 24px 0;
-  color: #909399;
-  font-size: 14px;
-}
-.about-links {
-  margin-bottom: 30px;
-}
-.about-links a {
-  color: #409EFF;
-  text-decoration: none;
-  font-size: 14px;
-}
-.about-links a:hover {
-  text-decoration: underline;
-}
-.about-links .link-divider {
-  margin: 0 12px;
-  color: #c0c4cc;
-}
-.about-copyright {
   margin: 0;
+  color: var(--app-muted);
+  font-size: 14px;
+}
+.about-tagline {
+  margin: 6px 0 0;
+  color: var(--app-muted);
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+.about-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.about-actions .el-button {
+  padding: 10px 16px;
+  border-radius: 999px;
+}
+.about-actions .el-button--primary {
+  background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-accent-strong) 100%);
+  border: none;
+}
+.about-actions .el-button--primary:hover {
+  filter: brightness(1.05);
+}
+.about-actions .el-button.is-plain {
+  border-color: var(--app-border);
+  color: var(--app-ink);
+}
+.dark-mode .about-actions .el-button.is-plain {
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e5e7eb;
+}
+.about-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-muted);
   font-size: 12px;
-  color: #909399;
+  margin-top: 4px;
+}
+.about-footnote .dot {
+  color: var(--app-accent);
 }
 </style>

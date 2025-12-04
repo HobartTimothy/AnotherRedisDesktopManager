@@ -51,16 +51,26 @@
       :title="$t('message.add_group')"
       :visible.sync="addGroupDialogVisible"
       :append-to-body='true'
-      width="400px">
-      <el-form label-position="top">
-        <el-form-item :label="$t('message.group_name')">
-          <el-input v-model="newGroupName" :placeholder="$t('message.group_name')"></el-input>
-        </el-form-item>
-        <el-form-item :label="$t('message.group_icon')">
+      :close-on-click-modal="false"
+      custom-class="add-group-dialog"
+      width="520px">
+      <div class="add-group-hero">
+        <div class="add-group-pill">New</div>
+        <div>
+          <h3>{{ $t('message.add_group') }}</h3>
+          <p>{{ $t('message.group_icon') }} {{ $t('message.group_name') }}</p>
+        </div>
+      </div>
+
+      <el-form label-position="top" class="add-group-form">
+        <el-form-item :label="$t('message.group_icon')" class="form-card">
           <div class="icon-upload-area">
             <div class="icon-preview" @click="triggerIconUpload">
               <img v-if="newGroupIcon" :src="newGroupIcon" class="preview-img" />
-              <i v-else class="el-icon-plus"></i>
+              <div v-else class="icon-placeholder">
+                <i class="el-icon-picture-outline-round"></i>
+                <span>{{ $t('message.icon_size_tip') }}</span>
+              </div>
             </div>
             <input
               type="file"
@@ -68,22 +78,19 @@
               accept="image/*"
               style="display: none"
               @change="handleIconChange" />
-            <el-button v-if="newGroupIcon" type="text" size="mini" @click="newGroupIcon = ''">
-              {{ $t('message.remove') }}
-            </el-button>
-            <div class="icon-tip">{{ $t('message.icon_size_tip') }}</div>
           </div>
         </el-form-item>
-        <el-form-item :label="$t('message.mark_color')">
-          <el-color-picker
-            v-model="newGroupColor"
-            :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff', '#909399']">
-          </el-color-picker>
+
+        <el-form-item :label="$t('message.group_name')" class="group-name-item form-card">
+          <el-input v-model="newGroupName" :placeholder="$t('message.group_name')" clearable></el-input>
         </el-form-item>
       </el-form>
-      <div slot="footer">
-        <el-button @click="addGroupDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
-        <el-button type="primary" @click="addGroup">{{ $t('el.messagebox.confirm') }}</el-button>
+
+      <div slot="footer" class="add-group-footer">
+        <div class="footer-actions">
+          <el-button @click="addGroupDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+          <el-button type="primary" @click="addGroup">{{ $t('el.messagebox.confirm') }}</el-button>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -107,7 +114,6 @@ export default {
       filterMode: '',
       addGroupDialogVisible: false,
       newGroupName: '',
-      newGroupColor: '#409EFF',
       newGroupIcon: '',
     };
   },
@@ -166,7 +172,6 @@ export default {
     },
     showAddGroupDialog() {
       this.newGroupName = '';
-      this.newGroupColor = '#409EFF';
       this.newGroupIcon = '';
       this.addGroupDialogVisible = true;
     },
@@ -214,7 +219,6 @@ export default {
 
       storage.addGroup({
         name: this.newGroupName.trim(),
-        color: this.newGroupColor,
         icon: this.newGroupIcon,
       });
 
@@ -321,5 +325,147 @@ export default {
   .connections-wrap .icon-tip {
     font-size: 12px;
     color: #909399;
+  }
+  /* Modern add-group dialog */
+  .add-group-dialog .el-dialog {
+    border-radius: 24px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), var(--app-surface));
+    box-shadow: 0 25px 80px rgba(15, 23, 42, 0.25);
+    resize: both;
+    overflow: auto;
+    min-width: 360px;
+    max-width: 720px;
+  }
+  .dark-mode .add-group-dialog .el-dialog {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(16, 24, 40, 0.92));
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.45);
+  }
+  .add-group-dialog .el-dialog__header {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 14px 20px 12px;
+  }
+  .dark-mode .add-group-dialog .el-dialog__header {
+    border-color: rgba(148, 163, 184, 0.12);
+  }
+  .add-group-dialog .el-dialog__title {
+    font-weight: 700;
+    color: var(--app-ink);
+    letter-spacing: -0.2px;
+  }
+  .dark-mode .add-group-dialog .el-dialog__title {
+    color: #e5e7eb;
+  }
+  .add-group-dialog .el-dialog__body {
+    padding: 18px 22px 10px;
+    background: transparent;
+  }
+  .add-group-hero {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: linear-gradient(120deg, rgba(34, 211, 238, 0.12), rgba(14, 165, 233, 0.08));
+  }
+  .dark-mode .add-group-hero {
+    background: linear-gradient(120deg, rgba(56, 189, 248, 0.16), rgba(59, 130, 246, 0.08));
+  }
+  .add-group-hero h3 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    color: var(--app-ink);
+  }
+  .add-group-hero p {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 13px;
+  }
+  .add-group-pill {
+    background: rgba(34, 211, 238, 0.16);
+    color: var(--app-accent-strong);
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .dark-mode .add-group-pill {
+    background: rgba(56, 189, 248, 0.18);
+    color: #7dd3fc;
+  }
+  .add-group-form .el-form-item__label {
+    color: var(--app-muted);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .add-group-form .form-card {
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+  }
+  .dark-mode .add-group-form .form-card {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.75);
+  }
+  .add-group-dialog .icon-upload-area {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .add-group-dialog .icon-preview {
+    flex: 1;
+    min-height: 120px;
+    border: 1px dashed rgba(148, 163, 184, 0.6);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.6);
+    transition: all 0.2s ease;
+  }
+  .add-group-dialog .icon-preview:hover {
+    border-color: var(--app-accent-strong);
+    box-shadow: 0 10px 25px rgba(34, 211, 238, 0.18);
+  }
+  .dark-mode .add-group-dialog .icon-preview {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+  }
+  .icon-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--app-muted);
+    font-size: 12px;
+  }
+  .icon-placeholder i {
+    font-size: 22px;
+    color: var(--app-accent);
+  }
+  .add-group-dialog .icon-preview .preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+  }
+  .add-group-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 6px 4px;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+  }
+  .dark-mode .add-group-footer {
+    border-color: rgba(148, 163, 184, 0.12);
+  }
+  .add-group-footer .footer-hint {
+    color: var(--app-muted);
+    font-size: 12px;
+  }
+  .add-group-footer .footer-actions {
+    display: flex;
+    gap: 8px;
   }
 </style>
