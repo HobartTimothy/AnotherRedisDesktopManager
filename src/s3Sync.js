@@ -156,17 +156,22 @@ class S3SyncService {
   }
 
   /**
-   * Upload connections and groups to S3
+   * Upload connections, groups, settings and decoders to S3
    */
   async upload() {
     const connections = storage.getConnections(true);
     const groups = storage.getGroups(true);
+    const settings = storage.getSetting();
+    const decoders = storage.getDecoders() || [];
 
     const syncData = {
-      version: 1,
+      version: 2,
       timestamp: new Date().toISOString(),
       connections,
-      groups
+      groups,
+      settings,
+      theme: localStorage.theme || 'system',
+      decoders,
     };
 
     const body = JSON.stringify(syncData);
@@ -212,6 +217,21 @@ class S3SyncService {
       for (const connection of syncData.connections) {
         storage.addConnection(connection);
       }
+    }
+    
+    // Import settings (version 2+)
+    if (syncData.settings) {
+      storage.saveSettings(syncData.settings);
+    }
+    
+    // Import theme
+    if (syncData.theme) {
+      localStorage.theme = syncData.theme;
+    }
+    
+    // Import decoders
+    if (syncData.decoders && Array.isArray(syncData.decoders)) {
+      storage.saveDecoders(syncData.decoders);
     }
   }
 

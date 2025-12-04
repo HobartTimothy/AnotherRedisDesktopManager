@@ -284,6 +284,83 @@
               </el-table-column>
             </el-table>
           </div>
+          
+          <!-- Data Sync Tab -->
+          <div v-show="activeTab === 'sync'" class="pref-panel">
+            <!-- Manual Sync Section -->
+            <div class="sync-section">
+              <h4 class="sync-section-title">{{ $t('message.manual_sync') }}</h4>
+              <p class="sync-section-desc">{{ $t('message.manual_sync_desc') }}</p>
+              <div class="sync-actions">
+                <el-button size="small" icon="el-icon-download" @click="showImportDataDialog">
+                  {{ $t('message.import') }}
+                </el-button>
+                <el-button size="small" icon="el-icon-upload2" @click="exportAllData">
+                  {{ $t('message.export') }}
+                </el-button>
+              </div>
+            </div>
+            
+            <!-- S3 Sync Section -->
+            <div class="sync-section">
+              <h4 class="sync-section-title">{{ $t('message.s3_sync') }}</h4>
+              <p class="sync-section-desc">{{ $t('message.s3_sync_desc') }}</p>
+              
+              <el-form label-position="top" size="small" class="s3-config-form">
+                <el-row :gutter="16">
+                  <el-col :span="12">
+                    <el-form-item :label="$t('message.s3_endpoint')" required>
+                      <el-input v-model="s3Config.endpoint" placeholder="https://s3.amazonaws.com"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item :label="$t('message.s3_region')">
+                      <el-input v-model="s3Config.region" placeholder="us-east-1"></el-input>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="16">
+                  <el-col :span="12">
+                    <el-form-item label="Access Key ID" required>
+                      <el-input v-model="s3Config.accessKeyId" placeholder="Access Key ID"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="Secret Access Key" required>
+                      <el-input v-model="s3Config.secretAccessKey" type="password" show-password placeholder="Secret Access Key"></el-input>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-row :gutter="16">
+                  <el-col :span="12">
+                    <el-form-item :label="$t('message.s3_bucket')" required>
+                      <el-input v-model="s3Config.bucket" placeholder="my-bucket"></el-input>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item :label="$t('message.s3_prefix')">
+                      <el-input v-model="s3Config.prefix" placeholder="ardm-sync/"></el-input>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+              
+              <div class="sync-actions">
+                <el-button size="small" @click="testS3Connection" :loading="s3Testing">
+                  <i class="el-icon-connection"></i> {{ $t('message.s3_test_connection') }}
+                </el-button>
+                <el-button size="small" @click="saveS3Config">
+                  <i class="el-icon-check"></i> {{ $t('message.save_config') }}
+                </el-button>
+                <el-button size="small" type="warning" @click="s3Download" :loading="s3Syncing">
+                  <i class="el-icon-download"></i> {{ $t('message.s3_download') }}
+                </el-button>
+                <el-button size="small" type="primary" @click="s3Upload" :loading="s3Syncing">
+                  <i class="el-icon-upload2"></i> {{ $t('message.s3_upload') }}
+                </el-button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -407,6 +484,30 @@
         <el-button type="primary" @click="importDecoders">{{ $t('el.messagebox.confirm') }}</el-button>
       </div>
     </el-dialog>
+    
+    <!-- Import Data Dialog -->
+    <el-dialog
+      :title="$t('message.import_data')"
+      :visible.sync="importDataDialogVisible"
+      width="450px"
+      append-to-body>
+      <el-alert :title="$t('message.import_data_warning')" type="warning" show-icon :closable="false" style="margin-bottom: 16px;"></el-alert>
+      <el-upload
+        ref="dataUpload"
+        :auto-upload="false"
+        :multiple="false"
+        action=""
+        :limit="1"
+        :on-change="loadDataFile"
+        drag>
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">{{ $t('message.put_file_here') }}</div>
+      </el-upload>
+      <div slot="footer">
+        <el-button @click="importDataDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="primary" @click="importAllData">{{ $t('el.messagebox.confirm') }}</el-button>
+      </div>
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -415,6 +516,7 @@ import storage from '@/storage.js';
 import { ipcRenderer, remote } from 'electron';
 import { spawn } from 'child_process';
 import LanguageSelector from '@/components/LanguageSelector';
+import S3SyncService from '@/s3Sync.js';
 
 export default {
   data() {
@@ -462,6 +564,22 @@ export default {
       // Import
       importDecoderDialogVisible: false,
       importDecoderContent: '',
+      // Data Sync
+      importDataDialogVisible: false,
+      importDataContent: '',
+      s3Config: {
+        syncMode: 'manual',
+        endpoint: '',
+        region: 'us-east-1',
+        accessKeyId: '',
+        secretAccessKey: '',
+        bucket: '',
+        parallelism: 4,
+        prefix: 'ardm-sync/',
+      },
+      s3ConfigDialogVisible: false,
+      s3Testing: false,
+      s3Syncing: false,
     };
   },
   components: { LanguageSelector },
@@ -472,6 +590,7 @@ export default {
         { key: 'editor', label: this.$t('message.editor') },
         { key: 'cli', label: this.$t('message.cli') },
         { key: 'decoder', label: this.$t('message.custom_decoder') },
+        { key: 'sync', label: this.$t('message.data_sync') },
       ];
     },
     themeList() {
@@ -507,6 +626,9 @@ export default {
 
       // decoders
       this.decoders = storage.getDecoders() || [];
+      
+      // S3 config
+      this.s3Config = storage.getS3Config();
     },
     saveSettings() {
       storage.saveSettings(this.form);
@@ -774,6 +896,212 @@ export default {
         this.$message.error(this.$t('message.import_failed') + ': ' + err.message);
       }
     },
+    // Data Sync Methods
+    getAllSyncData() {
+      return {
+        version: 2,
+        timestamp: new Date().toISOString(),
+        settings: storage.getSetting(),
+        theme: localStorage.theme || 'system',
+        connections: storage.getConnections(true),
+        groups: storage.getGroups(true),
+        decoders: storage.getDecoders() || [],
+        s3Config: storage.getS3Config(),
+      };
+    },
+    applyAllSyncData(data) {
+      if (!data || !data.version) {
+        throw new Error('Invalid sync data format');
+      }
+      
+      // Apply settings
+      if (data.settings) {
+        storage.saveSettings(data.settings);
+        this.form = { ...this.form, ...data.settings };
+      }
+      
+      // Apply theme
+      if (data.theme) {
+        localStorage.theme = data.theme;
+        this.themeMode = data.theme;
+        globalChangeTheme(data.theme);
+      }
+      
+      // Apply groups
+      if (data.groups && Array.isArray(data.groups)) {
+        const groups = {};
+        for (const group of data.groups) {
+          groups[group.key] = group;
+        }
+        storage.setGroups(groups);
+      }
+      
+      // Apply connections
+      if (data.connections && Array.isArray(data.connections)) {
+        storage.setConnections({});
+        for (const connection of data.connections) {
+          storage.addConnection(connection);
+        }
+      }
+      
+      // Apply decoders
+      if (data.decoders && Array.isArray(data.decoders)) {
+        storage.saveDecoders(data.decoders);
+        this.decoders = data.decoders;
+      }
+      
+      // Apply S3 config (but don't overwrite credentials if empty)
+      if (data.s3Config) {
+        const currentS3 = storage.getS3Config();
+        const newS3 = {
+          ...data.s3Config,
+          accessKeyId: data.s3Config.accessKeyId || currentS3.accessKeyId,
+          secretAccessKey: data.s3Config.secretAccessKey || currentS3.secretAccessKey,
+        };
+        storage.saveS3Config(newS3);
+        this.s3Config = newS3;
+      }
+    },
+    showImportDataDialog() {
+      this.importDataDialogVisible = true;
+      this.importDataContent = '';
+    },
+    loadDataFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.importDataContent = event.target.result;
+      };
+      reader.readAsText(file.raw);
+    },
+    importAllData() {
+      try {
+        const data = JSON.parse(this.importDataContent);
+        this.applyAllSyncData(data);
+        
+        this.importDataDialogVisible = false;
+        this.importDataContent = '';
+        if (this.$refs.dataUpload) {
+          this.$refs.dataUpload.clearFiles();
+        }
+        
+        // Refresh connections
+        this.$bus.$emit('closeConnection');
+        this.$bus.$emit('refreshConnections');
+        
+        this.$message.success(this.$t('message.import_success'));
+      } catch (err) {
+        this.$message.error(this.$t('message.import_failed') + ': ' + err.message);
+      }
+    },
+    exportAllData() {
+      const data = this.getAllSyncData();
+      // Remove sensitive data from export
+      const exportData = {
+        ...data,
+        s3Config: {
+          ...data.s3Config,
+          accessKeyId: '',
+          secretAccessKey: '',
+        },
+      };
+      this.$util.createAndDownloadFile('ardm-backup.json', JSON.stringify(exportData, null, 2));
+      this.$message.success(this.$t('message.export_success'));
+    },
+    // S3 Sync Methods
+    createS3Service() {
+      return new S3SyncService(this.s3Config);
+    },
+    validateS3Config() {
+      const { endpoint, accessKeyId, secretAccessKey, bucket } = this.s3Config;
+      const validations = [
+        [!endpoint, 's3_endpoint_required'],
+        [!accessKeyId, 's3_accesskey_required'],
+        [!secretAccessKey, 's3_secretkey_required'],
+        [!bucket, 's3_bucket_required'],
+      ];
+
+      for (const [condition, messageKey] of validations) {
+        if (condition) {
+          this.$message.warning(this.$t(`message.${messageKey}`));
+          return false;
+        }
+      }
+      return true;
+    },
+    saveS3Config() {
+      storage.saveS3Config(this.s3Config);
+      this.$message.success(this.$t('message.save_success'));
+    },
+    async testS3Connection() {
+      if (!this.validateS3Config()) return;
+
+      this.s3Testing = true;
+      try {
+        const result = await this.createS3Service().testConnection();
+        if (result.success) {
+          this.$message.success(this.$t('message.s3_connection_success'));
+        } else {
+          this.$message.error(`${this.$t('message.s3_connection_failed')}: ${result.error}`);
+        }
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_connection_failed')}: ${error.message}`);
+      } finally {
+        this.s3Testing = false;
+      }
+    },
+    async s3Upload() {
+      if (!this.validateS3Config()) return;
+
+      try {
+        await this.$confirm(this.$t('message.s3_upload_confirm'));
+      } catch {
+        return;
+      }
+
+      this.s3Syncing = true;
+      try {
+        // Save current settings first
+        storage.saveSettings(this.form);
+        storage.saveDecoders(this.decoders);
+        storage.saveS3Config(this.s3Config);
+        
+        await this.createS3Service().upload();
+        this.$message.success(this.$t('message.s3_upload_success'));
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
+      } finally {
+        this.s3Syncing = false;
+      }
+    },
+    async s3Download() {
+      if (!this.validateS3Config()) return;
+
+      try {
+        await this.$confirm(this.$t('message.s3_download_confirm'));
+      } catch {
+        return;
+      }
+
+      this.s3Syncing = true;
+      try {
+        const s3Service = this.createS3Service();
+        const syncData = await s3Service.download();
+        s3Service.applyDownloadedData(syncData);
+
+        // Restore settings to form
+        this.restoreSettings();
+        
+        // Refresh connections
+        this.$bus.$emit('closeConnection');
+        this.$bus.$emit('refreshConnections');
+
+        this.$message.success(this.$t('message.s3_download_success'));
+      } catch (error) {
+        this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
+      } finally {
+        this.s3Syncing = false;
+      }
+    },
   },
   mounted() {
     this.bindGetAllFonts();
@@ -784,76 +1112,119 @@ export default {
 <style type="text/css">
 /* Preferences Dialog */
 .pref-dialog {
-  width: 720px !important;
+  width: 780px !important;
   max-width: 90vw;
   margin-top: 5vh !important;
+  border-radius: 16px !important;
+  overflow: visible;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+  min-width: 600px;
+  min-height: 400px;
+}
+.pref-dialog .el-dialog {
+  border-radius: 16px !important;
+  resize: both;
+  overflow: auto;
+  min-width: 600px;
+  min-height: 450px;
+  max-width: 95vw;
+  max-height: 90vh;
 }
 .pref-dialog .el-dialog__header {
   display: none;
 }
 .pref-dialog .el-dialog__body {
   padding: 0;
+  border-radius: 16px;
+  height: 100%;
+}
+.dark-mode .pref-dialog {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 25px rgba(0, 0, 0, 0.3) !important;
 }
 
 .pref-container {
   display: flex;
   flex-direction: column;
-  height: 70vh;
-  max-height: 600px;
+  height: 100%;
+  min-height: 450px;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .pref-header {
-  padding: 20px 24px;
+  padding: 20px 28px;
   font-size: 18px;
   font-weight: 600;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #ebeef5;
+  background: linear-gradient(135deg, #fff 0%, #f9fafc 100%);
+  border-radius: 16px 16px 0 0;
 }
 .dark-mode .pref-header {
-  border-color: #4a5a64;
+  border-color: #3d4a52;
+  background: linear-gradient(135deg, #2d3a40 0%, #252f35 100%);
 }
 
 .pref-body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  background: #fff;
+}
+.dark-mode .pref-body {
+  background: #1e282d;
 }
 
 /* Left Navigation */
 .pref-nav {
-  width: 120px;
-  padding: 16px 0;
-  border-right: 1px solid #e4e7ed;
+  width: 140px;
+  padding: 20px 0;
+  border-right: 1px solid #ebeef5;
   flex-shrink: 0;
+  background: #f9fafc;
 }
 .dark-mode .pref-nav {
-  border-color: #4a5a64;
+  border-color: #3d4a52;
+  background: #242e34;
 }
 
 .pref-nav-item {
-  padding: 12px 20px;
+  padding: 14px 24px;
   cursor: pointer;
   font-size: 14px;
   color: #606266;
   border-left: 3px solid transparent;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
+  margin: 2px 0;
 }
 .dark-mode .pref-nav-item {
   color: #b0bec5;
 }
 .pref-nav-item:hover {
   color: #f56c6c;
+  background: rgba(245, 108, 108, 0.05);
 }
 .pref-nav-item.active {
   color: #f56c6c;
   border-left-color: #f56c6c;
   font-weight: 500;
+  background: rgba(245, 108, 108, 0.08);
+}
+.dark-mode .pref-nav-item:hover {
+  background: rgba(245, 108, 108, 0.1);
+}
+.dark-mode .pref-nav-item.active {
+  background: rgba(245, 108, 108, 0.15);
 }
 
 /* Right Content */
 .pref-content {
   flex: 1;
-  padding: 20px 24px;
+  padding: 24px 28px;
   overflow-y: auto;
+  background: #fff;
+}
+.dark-mode .pref-content {
+  background: #1e282d;
 }
 
 .pref-panel {
@@ -891,38 +1262,42 @@ export default {
 /* Button Group */
 .pref-btn-group {
   display: inline-flex;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 .dark-mode .pref-btn-group {
   border-color: #4a5a64;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 .pref-btn {
-  padding: 8px 16px;
+  padding: 10px 18px;
   border: none;
   background: #fff;
   cursor: pointer;
   font-size: 14px;
   color: #606266;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
 .dark-mode .pref-btn {
   background: #2d3a40;
   color: #b0bec5;
 }
 .pref-btn:not(:last-child) {
-  border-right: 1px solid #dcdfe6;
+  border-right: 1px solid #e4e7ed;
 }
 .dark-mode .pref-btn:not(:last-child) {
   border-color: #4a5a64;
 }
 .pref-btn:hover {
   color: #f56c6c;
+  background: rgba(245, 108, 108, 0.05);
 }
 .pref-btn.active {
-  background: #f56c6c;
+  background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.3);
 }
 
 /* Input Styles */
@@ -984,42 +1359,70 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  border-top: 1px solid #e4e7ed;
+  padding: 18px 28px;
+  border-top: 1px solid #ebeef5;
+  background: linear-gradient(135deg, #f9fafc 0%, #fff 100%);
+  border-radius: 0 0 16px 16px;
 }
 .dark-mode .pref-footer {
-  border-color: #4a5a64;
+  border-color: #3d4a52;
+  background: linear-gradient(135deg, #252f35 0%, #2d3a40 100%);
 }
 .pref-footer-right {
   display: flex;
   gap: 12px;
 }
+.pref-footer .el-button {
+  border-radius: 8px;
+  padding: 10px 20px;
+}
+.pref-footer .el-button--primary {
+  background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.3);
+}
+.pref-footer .el-button--primary:hover {
+  background: linear-gradient(135deg, #f78989 0%, #e74c3c 100%);
+  box-shadow: 0 6px 16px rgba(245, 108, 108, 0.4);
+}
 
 /* Decoder Dialog */
+.decoder-dialog .el-dialog {
+  border-radius: 12px !important;
+}
+.decoder-dialog .el-dialog__header {
+  border-radius: 12px 12px 0 0;
+}
 .decoder-dialog .el-dialog__body {
   padding-top: 10px;
 }
 .decoder-tabs {
   margin-bottom: 16px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #ebeef5;
 }
 .dark-mode .decoder-tabs {
-  border-color: #4a5a64;
+  border-color: #3d4a52;
 }
 .decoder-tab {
   display: inline-block;
-  padding: 8px 16px;
+  padding: 10px 18px;
   cursor: pointer;
   color: #606266;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  transition: all 0.25s ease;
+  border-radius: 8px 8px 0 0;
 }
 .dark-mode .decoder-tab {
   color: #b0bec5;
 }
+.decoder-tab:hover {
+  background: rgba(245, 108, 108, 0.05);
+}
 .decoder-tab.active {
   color: #f56c6c;
   border-bottom-color: #f56c6c;
+  background: rgba(245, 108, 108, 0.08);
 }
 .decoder-path-input {
   display: flex;
@@ -1045,44 +1448,98 @@ export default {
 .decoder-test-output,
 .decoder-test-error {
   margin-top: 12px;
-  padding: 10px;
-  border-radius: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
   font-size: 13px;
 }
 .decoder-test-output {
-  background: #f0f9eb;
-  border: 1px solid #e1f3d8;
+  background: linear-gradient(135deg, #f0f9eb 0%, #e8f8e0 100%);
+  border: 1px solid #d4edcc;
 }
 .decoder-test-output label {
   color: #67c23a;
-  font-weight: 500;
+  font-weight: 600;
 }
 .decoder-test-output pre {
   margin: 8px 0 0;
-  color: #67c23a;
+  color: #52a82f;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .decoder-test-error {
-  background: #fef0f0;
-  border: 1px solid #fde2e2;
+  background: linear-gradient(135deg, #fef0f0 0%, #ffe6e6 100%);
+  border: 1px solid #fdd;
 }
 .decoder-test-error label {
   color: #f56c6c;
-  font-weight: 500;
+  font-weight: 600;
 }
 .decoder-test-error pre {
   margin: 8px 0 0;
-  color: #f56c6c;
+  color: #e74c3c;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .dark-mode .decoder-test-output {
-  background: rgba(103, 194, 58, 0.1);
+  background: linear-gradient(135deg, rgba(103, 194, 58, 0.1) 0%, rgba(103, 194, 58, 0.15) 100%);
   border-color: rgba(103, 194, 58, 0.3);
 }
 .dark-mode .decoder-test-error {
-  background: rgba(245, 108, 108, 0.1);
+  background: linear-gradient(135deg, rgba(245, 108, 108, 0.1) 0%, rgba(245, 108, 108, 0.15) 100%);
   border-color: rgba(245, 108, 108, 0.3);
+}
+
+/* Data Sync Tab */
+.sync-section {
+  background: linear-gradient(135deg, #f9fafc 0%, #f5f7fa 100%);
+  border: 1px solid #e8ecf1;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+}
+.sync-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.dark-mode .sync-section {
+  background: linear-gradient(135deg, #2d3a40 0%, #28343a 100%);
+  border-color: #3d4a52;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.dark-mode .sync-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.sync-section-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+.dark-mode .sync-section-title {
+  color: #e8e8e8;
+}
+.sync-section-desc {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.5;
+}
+.sync-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sync-actions .el-button {
+  border-radius: 8px;
+}
+.s3-config-form {
+  margin-bottom: 18px;
+}
+.s3-config-form .el-form-item {
+  margin-bottom: 14px;
+}
+.s3-config-form .el-input__inner {
+  border-radius: 8px;
 }
 </style>

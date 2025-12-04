@@ -336,6 +336,15 @@ const en = {
     error: 'Error',
     import_decoder: 'Import Decoders',
     import_failed: 'Import failed',
+    // Data Sync
+    data_sync: 'Data Sync',
+    manual_sync: 'Manual Sync',
+    manual_sync_desc: 'Manually import or export all configurations including preferences, connections, groups and decoders',
+    s3_sync: 'S3 Cloud Sync',
+    s3_sync_desc: 'Sync all configurations using S3 compatible storage (AWS S3/Aliyun OSS/MinIO etc.)',
+    import_data: 'Import Data',
+    import_data_warning: 'Import will overwrite all current configurations. It is recommended to export a backup first',
+    save_config: 'Save Config',
   },
 };
 

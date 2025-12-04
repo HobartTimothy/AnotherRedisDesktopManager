@@ -336,6 +336,15 @@ const cn = {
     error: '错误',
     import_decoder: '导入解码器',
     import_failed: '导入失败',
+    // 数据同步
+    data_sync: '数据同步',
+    manual_sync: '手动同步',
+    manual_sync_desc: '手动导入或导出所有配置，包括偏好设置、连接、分组和解码器',
+    s3_sync: 'S3 云同步',
+    s3_sync_desc: '使用 S3 兼容存储（AWS S3/阿里云 OSS/MinIO 等）同步所有配置',
+    import_data: '导入数据',
+    import_data_warning: '导入将覆盖当前所有配置，建议先导出备份',
+    save_config: '保存配置',
   },
 };
 
