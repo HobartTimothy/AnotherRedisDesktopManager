@@ -1142,6 +1142,15 @@ export default {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 25px rgba(0, 0, 0, 0.3) !important;
 }
 
+/* Resize Handle */
+.pref-dialog .el-dialog::-webkit-resizer {
+  background: linear-gradient(135deg, transparent 50%, #ddd 50%, #ddd 60%, transparent 60%, transparent 70%, #ddd 70%, #ddd 80%, transparent 80%);
+  border-radius: 0 0 16px 0;
+}
+.dark-mode .pref-dialog .el-dialog::-webkit-resizer {
+  background: linear-gradient(135deg, transparent 50%, #4a5a64 50%, #4a5a64 60%, transparent 60%, transparent 70%, #4a5a64 70%, #4a5a64 80%, transparent 80%);
+}
+
 .pref-container {
   display: flex;
   flex-direction: column;
