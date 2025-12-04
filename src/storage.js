@@ -138,6 +138,16 @@ export default {
   },
   // ==================== S3 Sync Config End ====================
 
+  // ==================== Custom Decoders ====================
+  getDecoders() {
+    let decoders = localStorage.getItem('customDecoders');
+    return decoders ? JSON.parse(decoders) : [];
+  },
+  saveDecoders(decoders) {
+    return localStorage.setItem('customDecoders', JSON.stringify(decoders));
+  },
+  // ==================== Custom Decoders End ====================
+
   getSetting(key) {
     let settings = localStorage.getItem('settings');
     settings = settings ? JSON.parse(settings) : {};

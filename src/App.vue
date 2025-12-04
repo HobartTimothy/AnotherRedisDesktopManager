@@ -12,31 +12,36 @@
           {{ $t('message.preferences') }}
         </div>
         <div class="menu-item" @click="reportBug">
+          <i class="fa fa-bug"></i>
           {{ $t('message.report_bug') }}
         </div>
         <div class="menu-item" @click="openGuide">
+          <i class="fa fa-book"></i>
           {{ $t('message.user_guide') }}
         </div>
         <div class="menu-item" @click="checkUpdate">
+          <i class="fa fa-refresh"></i>
           {{ $t('message.check_update') }}...
         </div>
         <div class="menu-divider"></div>
         <div class="menu-item" @click="showAboutDialog">
+          <i class="fa fa-info-circle"></i>
           {{ $t('message.about') }}
         </div>
       </div>
 
       <!-- About Dialog -->
-      <el-dialog :title="$t('message.about')" :visible.sync="aboutDialogVisible" width="400px" :append-to-body="true">
+      <el-dialog :visible.sync="aboutDialogVisible" width="420px" :append-to-body="true" :show-close="true" custom-class="about-dialog">
         <div class="about-content">
           <img src="./assets/applogo.png" class="about-logo" alt="logo" />
           <h2 class="about-title">Another Redis Desktop Manager</h2>
-          <p class="about-version">{{ $t('message.pre_version') }}: {{ appVersion }}</p>
+          <p class="about-version">v{{ appVersion }}</p>
           <div class="about-links">
-            <a href="https://github.com/HobartTimothy/AnotherRedisDesktopManager" @click.prevent="openGitHub">
-              <i class="fa fa-github"></i> GitHub
-            </a>
+            <a href="#" @click.prevent="openGitHub">{{ $t('message.source_code') }}</a>
+            <span class="link-divider">|</span>
+            <a href="#" @click.prevent="openGuide">{{ $t('message.official_site') }}</a>
           </div>
+          <p class="about-copyright">Copyright © 2025 HobartTimothy. All rights reserved</p>
         </div>
       </el-dialog>
 
@@ -566,18 +571,23 @@ html .dark-mode {
 }
 
 /* About Dialog */
+.about-dialog .el-dialog__header {
+  display: none;
+}
+.about-dialog .el-dialog__body {
+  padding: 40px 30px 30px;
+}
 .about-content {
   text-align: center;
-  padding: 20px 0;
 }
 .about-logo {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 16px;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 24px;
 }
 .about-title {
   margin: 0 0 12px 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #303133;
 }
@@ -585,21 +595,28 @@ html .dark-mode {
   color: #e0e0e0;
 }
 .about-version {
-  margin: 0 0 20px 0;
+  margin: 0 0 24px 0;
   color: #909399;
   font-size: 14px;
 }
+.about-links {
+  margin-bottom: 30px;
+}
 .about-links a {
-  display: inline-flex;
-  align-items: center;
   color: #409EFF;
   text-decoration: none;
   font-size: 14px;
 }
-.about-links a i {
-  margin-right: 6px;
-}
 .about-links a:hover {
   text-decoration: underline;
+}
+.about-links .link-divider {
+  margin: 0 12px;
+  color: #c0c4cc;
+}
+.about-copyright {
+  margin: 0;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

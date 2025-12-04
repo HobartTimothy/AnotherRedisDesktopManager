@@ -1,282 +1,497 @@
 <template>
-  <!-- setting dialog -->
-  <el-dialog :title="$t('message.settings')" :visible.sync="visible" custom-class="setting-main-dialog">
-    <el-form label-position="top" size="mini">
-
-      <el-card :header="$t('message.ui_settings')" class="setting-card">
-        <el-row :gutter="10" justify="space-between" type="flex" class="setting-row">
-          <el-col :sm="12" :lg="5">
-            <!-- theme select-->
-            <el-form-item :label="$t('message.theme_select')">
-              <el-select v-model='themeMode' @change="changeTheme">
-                <el-option
-                  v-for="(label, theme) in themeList"
+  <!-- Preferences Dialog -->
+  <el-dialog :visible.sync="visible" custom-class="pref-dialog" :show-close="true" :close-on-click-modal="false">
+    <div class="pref-container">
+      <!-- Header -->
+      <div class="pref-header">{{ $t('message.preferences') }}</div>
+      
+      <div class="pref-body">
+        <!-- Left Navigation -->
+        <div class="pref-nav">
+          <div 
+            v-for="tab in tabs" 
+            :key="tab.key"
+            class="pref-nav-item"
+            :class="{ active: activeTab === tab.key }"
+            @click="activeTab = tab.key">
+            {{ tab.label }}
+          </div>
+        </div>
+        
+        <!-- Right Content -->
+        <div class="pref-content">
+          <!-- General Config Tab -->
+          <div v-show="activeTab === 'general'" class="pref-panel">
+            <!-- Theme -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.theme_select') }}</label>
+              <div class="pref-btn-group">
+                <button 
+                  v-for="(label, theme) in themeList" 
                   :key="theme"
-                  :value="theme"
-                  :label="label">
-                </el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :sm="12" :lg="7">
-            <!-- language select -->
-            <el-form-item :label="$t('message.select_lang')">
-              <LanguageSelector></LanguageSelector>
-            </el-form-item>
-          </el-col>
-          <el-col :sm="12" :lg="5">
-            <!-- zoom page -->
-            <el-form-item :label="$t('message.page_zoom')">
-              <el-input-number
-                size="mini"
-                placeholder='1.0'
-                :min=0.5
-                :max=2.0
-                :step=0.1
-                :precision=1
-                @change='changeZoom'
-                v-model='form.zoomFactor'>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-          <el-col :sm="12" :lg="7">
-            <!-- font-family -->
-            <el-form-item :label="$t('message.font_family')">
-              <span slot="label">
+                  class="pref-btn"
+                  :class="{ active: themeMode === theme }"
+                  @click="themeMode = theme; changeTheme()">
+                  {{ label }}
+                </button>
+              </div>
+            </div>
+            
+            <!-- Language -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.select_lang') }}</label>
+              <LanguageSelector class="pref-select"></LanguageSelector>
+            </div>
+            
+            <!-- Font -->
+            <div class="pref-form-item">
+              <label class="pref-label">
                 {{ $t('message.font_family') }}
-                <el-popover
-                  placement="top-start"
-                  :title="$t('message.font_faq_title')"
-                  trigger="hover">
-                  <i slot="reference" class="el-icon-question"></i>
-                  <p v-html="$t('message.font_faq')"></p>
-                </el-popover>
+                <el-tooltip :content="$t('message.font_faq')" placement="top">
+                  <i class="el-icon-question"></i>
+                </el-tooltip>
                 <i v-if="loadingFonts" class="el-icon-loading"></i>
-              </span>
-              <!-- font-family select -->
-              <el-select v-model="form.fontFamily" @visible-change="getAllFonts" allow-create default-first-option
-                         filterable multiple class="setting-font-select">
+              </label>
+              <el-select 
+                v-model="form.fontFamily" 
+                @visible-change="getAllFonts" 
+                allow-create 
+                default-first-option
+                filterable 
+                :placeholder="$t('message.font_placeholder')"
+                class="pref-select">
                 <el-option
                   v-for="(font, index) in allFonts"
                   :key="index"
                   :label="font"
                   :value="font">
-                  <!-- for better performance, do not display font-family -->
-                  <!-- :style="{'font-family': font}"> -->
                 </el-option>
               </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-card>
-
-      <el-card :header="$t('message.common_settings')" class="setting-card">
-        <el-row :gutter="20" justify="space-between" type="flex" class="setting-row">
-          <el-col :sm="12" :lg="12">
-            <!-- keys per loading -->
-            <el-form-item>
+            </div>
+            
+            <!-- Font Size -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.font_size') }}</label>
               <el-input-number
-                size="mini"
-                placeholder='500'
-                :min=10
-                :max=20000
-                :step=50
-                v-model='form.keysPageSize'>
-              </el-input-number>&nbsp;
-              <!-- load all switch -->
-              <!-- <el-switch v-model='form.showLoadAllKeys'></el-switch>
-              {{ $t('message.show_load_all_keys') }} -->
-
-              <span slot="label">
-                {{ $t('message.keys_per_loading') }}
-                <el-popover
-                  :content="$t('message.keys_per_loading_tip')"
-                  placement="top-start"
-                  trigger="hover">
-                  <i slot="reference" class="el-icon-question"></i>
-                </el-popover>
-              </span>
-            </el-form-item>
-          </el-col>
-          <el-col :sm="12" :lg="12">
-            <!-- sync mode selection -->
-            <el-form-item :label="$t('message.config_connections')">
-              <el-select v-model="s3Config.syncMode" @change="onSyncModeChange" style="width: 120px;">
-                <el-option value="manual" :label="$t('message.sync_mode_manual')"></el-option>
-                <el-option value="s3" :label="$t('message.sync_mode_s3')"></el-option>
+                v-model="form.fontSize"
+                :min="10"
+                :max="24"
+                :step="1"
+                controls-position="right"
+                class="pref-number-input">
+              </el-input-number>
+            </div>
+            
+            <!-- SCAN Count & Key Icon Style -->
+            <div class="pref-form-row">
+              <div class="pref-form-item flex-1">
+                <label class="pref-label">
+                  {{ $t('message.keys_per_loading') }}
+                  <el-tooltip :content="$t('message.keys_per_loading_tip')" placement="top">
+                    <i class="el-icon-question"></i>
+                  </el-tooltip>
+                </label>
+                <el-input v-model.number="form.keysPageSize" type="number" class="pref-input"></el-input>
+              </div>
+              <div class="pref-form-item flex-1">
+                <label class="pref-label">{{ $t('message.key_icon_style') }}</label>
+                <el-select v-model="form.keyIconStyle" class="pref-select">
+                  <el-option value="compact" :label="$t('message.compact_style')"></el-option>
+                  <el-option value="normal" :label="$t('message.normal_style')"></el-option>
+                </el-select>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Editor Tab -->
+          <div v-show="activeTab === 'editor'" class="pref-panel">
+            <!-- Font -->
+            <div class="pref-form-item">
+              <label class="pref-label">
+                {{ $t('message.font_family') }}
+                <el-tooltip :content="$t('message.font_faq')" placement="top">
+                  <i class="el-icon-question"></i>
+                </el-tooltip>
+              </label>
+              <el-select 
+                v-model="form.editorFontFamily" 
+                @visible-change="getAllFonts" 
+                allow-create 
+                default-first-option
+                filterable 
+                :placeholder="$t('message.font_placeholder')"
+                class="pref-select">
+                <el-option
+                  v-for="(font, index) in allFonts"
+                  :key="index"
+                  :label="font"
+                  :value="font">
+                </el-option>
               </el-select>
-              <template v-if="s3Config.syncMode === 'manual'">
-                <el-button icon="el-icon-upload2" @click="exportConnection">{{ $t('message.export') }}</el-button>
-                <el-button icon="el-icon-download" @click="showImportDialog">{{ $t('message.import') }}</el-button>
-              </template>
-              <template v-else>
-                <el-button icon="el-icon-setting" @click="showS3ConfigDialog">{{ $t('message.s3_config') }}</el-button>
-              </template>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-card>
-
-      <el-card class="setting-card">
-        <div slot="header">{{ $t('message.other') }}</div>
-        <div class="current-version">
-          <a href="###" @click.stop.prevent="showHotkeys">{{ $t('message.hotkey') }}</a>
-          <a href="###" @click.stop.prevent="clearCache">{{ $t('message.clear_cache') }}</a>
-          <a href="###" @click.stop.prevent="checkUpdate">{{ $t('message.check_update') }}</a>
+            </div>
+            
+            <!-- Font Size -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.font_size') }}</label>
+              <el-input-number
+                v-model="form.editorFontSize"
+                :min="10"
+                :max="24"
+                :step="1"
+                controls-position="right"
+                class="pref-number-input">
+              </el-input-number>
+            </div>
+            
+            <!-- Editor Options -->
+            <div class="pref-checkbox-group">
+              <el-checkbox v-model="form.editorLineNumbers">{{ $t('message.show_line_numbers') }}</el-checkbox>
+              <el-checkbox v-model="form.editorFolding">{{ $t('message.enable_code_folding') }}</el-checkbox>
+              <el-checkbox v-model="form.editorDragDrop">{{ $t('message.allow_drag_drop') }}</el-checkbox>
+              <el-checkbox v-model="form.editorLinks">{{ $t('message.support_links') }}</el-checkbox>
+            </div>
+          </div>
+          
+          <!-- CLI Tab -->
+          <div v-show="activeTab === 'cli'" class="pref-panel">
+            <!-- Font -->
+            <div class="pref-form-item">
+              <label class="pref-label">
+                {{ $t('message.font_family') }}
+                <el-tooltip :content="$t('message.font_faq')" placement="top">
+                  <i class="el-icon-question"></i>
+                </el-tooltip>
+              </label>
+              <el-select 
+                v-model="form.cliFontFamily" 
+                @visible-change="getAllFonts" 
+                allow-create 
+                default-first-option
+                filterable 
+                :placeholder="$t('message.font_placeholder')"
+                class="pref-select">
+                <el-option
+                  v-for="(font, index) in allFonts"
+                  :key="index"
+                  :label="font"
+                  :value="font">
+                </el-option>
+              </el-select>
+            </div>
+            
+            <!-- Font Size -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.font_size') }}</label>
+              <el-input-number
+                v-model="form.cliFontSize"
+                :min="10"
+                :max="24"
+                :step="1"
+                controls-position="right"
+                class="pref-number-input">
+              </el-input-number>
+            </div>
+            
+            <!-- Cursor Style -->
+            <div class="pref-form-item">
+              <label class="pref-label">{{ $t('message.cursor_style') }}</label>
+              <div class="pref-btn-group">
+                <button 
+                  v-for="style in cursorStyles" 
+                  :key="style.value"
+                  class="pref-btn"
+                  :class="{ active: form.cliCursorStyle === style.value }"
+                  @click="form.cliCursorStyle = style.value">
+                  {{ style.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Custom Decoder Tab -->
+          <div v-show="activeTab === 'decoder'" class="pref-panel">
+            <div class="pref-decoder-header">
+              <div class="pref-decoder-actions">
+                <el-button size="small" type="primary" @click="showAddDecoderDialog">
+                  <i class="el-icon-plus"></i> {{ $t('message.add_decoder') }}
+                </el-button>
+                <el-dropdown size="small" trigger="click" @command="handleDecoderCommand">
+                  <el-button size="small">
+                    {{ $t('message.more_actions') }} <i class="el-icon-arrow-down"></i>
+                  </el-button>
+                  <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="import">
+                      <i class="el-icon-upload2"></i> {{ $t('message.import') }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="export" :disabled="decoders.length === 0">
+                      <i class="el-icon-download"></i> {{ $t('message.export') }}
+                    </el-dropdown-item>
+                    <el-dropdown-item divided command="enableAll" :disabled="decoders.length === 0">
+                      <i class="el-icon-open"></i> {{ $t('message.enable_all') }}
+                    </el-dropdown-item>
+                    <el-dropdown-item command="disableAll" :disabled="decoders.length === 0">
+                      <i class="el-icon-turn-off"></i> {{ $t('message.disable_all') }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </el-dropdown>
+              </div>
+              <el-button size="small" type="text" @click="showDecoderHelp">
+                <i class="el-icon-question"></i> {{ $t('message.help') }}
+              </el-button>
+            </div>
+            
+            <el-table :data="decoders" class="pref-decoder-table" :empty-text="$t('message.no_data')">
+              <el-table-column :label="$t('message.decoder_name')" min-width="120">
+                <template slot-scope="scope">
+                  <span :class="{ 'decoder-disabled': !scope.row.enabled }">{{ scope.row.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column :label="$t('message.command_preview')" min-width="150">
+                <template slot-scope="scope">
+                  <el-tooltip :content="scope.row.command" placement="top" :disabled="!scope.row.command || scope.row.command.length < 30">
+                    <span class="decoder-command" :class="{ 'decoder-disabled': !scope.row.enabled }">{{ scope.row.command }}</span>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column :label="$t('message.status')" width="80" align="center">
+                <template slot-scope="scope">
+                  <el-switch v-model="scope.row.enabled" size="small" @change="onDecoderStatusChange"></el-switch>
+                </template>
+              </el-table-column>
+              <el-table-column :label="$t('message.operation')" width="140" align="center">
+                <template slot-scope="scope">
+                  <el-tooltip :content="$t('message.test_decoder')" placement="top">
+                    <el-button type="text" size="small" @click="testDecoder(scope.row)">
+                      <i class="el-icon-video-play"></i>
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip :content="$t('message.copy')" placement="top">
+                    <el-button type="text" size="small" @click="copyDecoder(scope.row)">
+                      <i class="el-icon-document-copy"></i>
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip :content="$t('message.edit')" placement="top">
+                    <el-button type="text" size="small" @click="editDecoder(scope.row, scope.$index)">
+                      <i class="el-icon-edit"></i>
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip :content="$t('message.delete_success').replace('成功', '')" placement="top">
+                    <el-button type="text" size="small" class="danger-text" @click="deleteDecoder(scope.$index)">
+                      <i class="el-icon-delete"></i>
+                    </el-button>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </div>
-      </el-card>
-    </el-form>
-
-    <!-- import file dialog -->
+      </div>
+      
+      <!-- Footer -->
+      <div class="pref-footer">
+        <el-button @click="resetToDefault">{{ $t('message.reset_default') }}</el-button>
+        <div class="pref-footer-right">
+          <el-button @click="visible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+          <el-button type="danger" @click="saveSettings">{{ $t('message.save') }}</el-button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Add/Edit Decoder Dialog -->
+    <el-dialog 
+      :title="editingDecoderIndex >= 0 ? $t('message.edit_decoder_title') : $t('message.add_decoder_title')" 
+      :visible.sync="decoderDialogVisible" 
+      width="550px" 
+      append-to-body
+      custom-class="decoder-dialog">
+      <el-form :model="decoderForm" label-position="top" size="small">
+        <el-form-item :label="$t('message.decoder_name')" required>
+          <el-input v-model="decoderForm.name" :placeholder="$t('message.please_input')"></el-input>
+        </el-form-item>
+        
+        <div class="decoder-tabs">
+          <span 
+            class="decoder-tab" 
+            :class="{ active: decoderFormTab === 'decoder' }" 
+            @click="decoderFormTab = 'decoder'">{{ $t('message.decoder') }}</span>
+          <span 
+            class="decoder-tab" 
+            :class="{ active: decoderFormTab === 'encoder' }" 
+            @click="decoderFormTab = 'encoder'">{{ $t('message.encoder') }}</span>
+        </div>
+        
+        <el-form-item :required="decoderFormTab === 'decoder'">
+          <span slot="label">
+            {{ decoderFormTab === 'decoder' ? $t('message.decoder_path') : $t('message.encoder_path') }}
+            <el-tooltip :content="$t('message.decoder_path_tip')" placement="top">
+              <i class="el-icon-question"></i>
+            </el-tooltip>
+          </span>
+          <div class="decoder-path-input">
+            <el-input 
+              v-model="decoderForm[decoderFormTab + 'Path']" 
+              :placeholder="decoderFormTab === 'decoder' ? $t('message.decoder_path') : $t('message.encoder_path')">
+            </el-input>
+            <el-button @click="selectDecoderPath">...</el-button>
+          </div>
+        </el-form-item>
+        
+        <el-form-item>
+          <span slot="label">
+            {{ $t('message.run_args') }}
+            <el-tooltip :content="$t('message.run_args_tip')" placement="top">
+              <i class="el-icon-question"></i>
+            </el-tooltip>
+          </span>
+          <div v-for="(arg, index) in decoderForm[decoderFormTab + 'Args']" :key="index" class="decoder-arg-row">
+            <el-input v-model="decoderForm[decoderFormTab + 'Args'][index]" size="small" :placeholder="$t('message.arg_placeholder')"></el-input>
+            <el-button size="small" type="text" class="danger-text" @click="removeDecoderArg(index)">
+              <i class="el-icon-minus"></i>
+            </el-button>
+          </div>
+          <el-button size="small" @click="addDecoderArg" class="decoder-add-arg">
+            <i class="el-icon-plus"></i> {{ $t('message.add') }}
+          </el-button>
+        </el-form-item>
+        
+        <el-form-item :label="$t('message.test_value')">
+          <el-input 
+            v-model="testInput" 
+            type="textarea" 
+            :rows="2" 
+            :placeholder="$t('message.test_value_placeholder')">
+          </el-input>
+          <div class="decoder-test-actions">
+            <el-button size="mini" :loading="testing" @click="runDecoderTest">
+              <i class="el-icon-video-play"></i> {{ $t('message.run_test') }}
+            </el-button>
+          </div>
+          <div v-if="testOutput" class="decoder-test-output">
+            <label>{{ $t('message.test_output') }}:</label>
+            <pre>{{ testOutput }}</pre>
+          </div>
+          <div v-if="testError" class="decoder-test-error">
+            <label>{{ $t('message.error') }}:</label>
+            <pre>{{ testError }}</pre>
+          </div>
+        </el-form-item>
+        
+        <el-checkbox v-model="decoderForm.autoDecodeEncode">{{ $t('message.auto_decode') }}</el-checkbox>
+      </el-form>
+      
+      <div slot="footer">
+        <el-button @click="decoderDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="danger" @click="saveDecoder">{{ $t('el.messagebox.confirm') }}</el-button>
+      </div>
+    </el-dialog>
+    
+    <!-- Import Decoder Dialog -->
     <el-dialog
+      :title="$t('message.import_decoder')"
+      :visible.sync="importDecoderDialogVisible"
       width="400px"
-      :title="$t('message.select_import_file')"
-      :visible.sync="importConnectionVisible"
       append-to-body>
-
       <el-upload
-        ref="configUpload"
+        ref="decoderUpload"
         :auto-upload="false"
         :multiple="false"
         action=""
         :limit="1"
-        :on-change="loadConnectionFile"
+        :on-change="loadDecoderFile"
         drag>
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">{{ $t('message.put_file_here') }}</div>
       </el-upload>
-
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="importConnnection">{{ $t('el.messagebox.confirm') }}</el-button>
+      <div slot="footer">
+        <el-button @click="importDecoderDialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="primary" @click="importDecoders">{{ $t('el.messagebox.confirm') }}</el-button>
       </div>
     </el-dialog>
-
-    <!-- S3 Config Dialog -->
-    <el-dialog
-      width="600px"
-      :title="$t('message.s3_config')"
-      :visible.sync="s3ConfigDialogVisible"
-      append-to-body>
-      <el-form label-position="top" size="small">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item :label="$t('message.s3_endpoint')" required>
-              <el-input v-model="s3Config.endpoint" placeholder="https://s3.amazonaws.com"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('message.s3_region')">
-              <el-input v-model="s3Config.region" placeholder="us-east-1"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="Access Key ID" required>
-              <el-input v-model="s3Config.accessKeyId" placeholder="Access Key ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="Secret Access Key" required>
-              <el-input v-model="s3Config.secretAccessKey" type="password" show-password placeholder="Secret Access Key"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item :label="$t('message.s3_bucket')" required>
-              <el-input v-model="s3Config.bucket" placeholder="my-bucket"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('message.s3_prefix')">
-              <el-input v-model="s3Config.prefix" placeholder="ardm-sync/"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item :label="$t('message.s3_parallelism')">
-              <el-input-number v-model="s3Config.parallelism" :min="1" :max="16" :step="1"></el-input-number>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="testS3Connection" :loading="s3Testing">
-          <i class="el-icon-connection"></i> {{ $t('message.s3_test_connection') }}
-        </el-button>
-        <el-button type="warning" @click="s3Download" :loading="s3Syncing">
-          <i class="el-icon-download"></i> {{ $t('message.s3_download') }}
-        </el-button>
-        <el-button type="primary" @click="s3Upload" :loading="s3Syncing">
-          <i class="el-icon-upload2"></i> {{ $t('message.s3_upload') }}
-        </el-button>
-        <el-button @click="saveS3Config">{{ $t('message.save') }}</el-button>
-      </div>
-    </el-dialog>
-
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="visible = false">{{ $t('el.messagebox.cancel') }}</el-button>
-      <el-button type="primary" @click="saveSettings">{{ $t('el.messagebox.confirm') }}</el-button>
-    </div>
-
   </el-dialog>
 </template>
 
 <script type="text/javascript">
 import storage from '@/storage.js';
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, remote } from 'electron';
+import { spawn } from 'child_process';
 import LanguageSelector from '@/components/LanguageSelector';
-import S3SyncService from '@/s3Sync.js';
 
 export default {
   data() {
     return {
       visible: false,
+      activeTab: 'general',
       form: {
         fontFamily: '',
-        zoomFactor: 1.0,
-        keysPageSize: 500,
-        showLoadAllKeys: false,
+        fontSize: 14,
+        keysPageSize: 3000,
+        keyIconStyle: 'compact',
+        // Editor settings
+        editorFontFamily: '',
+        editorFontSize: 14,
+        editorLineNumbers: true,
+        editorFolding: true,
+        editorDragDrop: true,
+        editorLinks: true,
+        // CLI settings
+        cliFontFamily: '',
+        cliFontSize: 14,
+        cliCursorStyle: 'block',
       },
-      importConnectionVisible: false,
-      connectionFileContent: '',
-      appVersion: (new URL(window.location.href)).searchParams.get('version'),
-      // electronVersion: process.versions.electron,
       allFonts: [],
       loadingFonts: false,
       themeMode: 'system',
-      // S3 sync related
-      s3Config: {
-        syncMode: 'manual',
-        endpoint: '',
-        region: 'us-east-1',
-        accessKeyId: '',
-        secretAccessKey: '',
-        bucket: '',
-        parallelism: 4,
-        prefix: 'ardm-sync/',
+      // Decoders
+      decoders: [],
+      decoderDialogVisible: false,
+      decoderFormTab: 'decoder',
+      decoderForm: {
+        name: '',
+        decoderPath: '',
+        decoderArgs: [],
+        encoderPath: '',
+        encoderArgs: [],
+        autoDecodeEncode: true,
       },
-      s3ConfigDialogVisible: false,
-      s3Testing: false,
-      s3Syncing: false,
+      editingDecoderIndex: -1,
+      // Test
+      testInput: '',
+      testOutput: '',
+      testError: '',
+      testing: false,
+      // Import
+      importDecoderDialogVisible: false,
+      importDecoderContent: '',
     };
   },
   components: { LanguageSelector },
   computed: {
-    // themeList in computed to activate i18n
+    tabs() {
+      return [
+        { key: 'general', label: this.$t('message.general_config') },
+        { key: 'editor', label: this.$t('message.editor') },
+        { key: 'cli', label: this.$t('message.cli') },
+        { key: 'decoder', label: this.$t('message.custom_decoder') },
+      ];
+    },
     themeList() {
       return {
-        system: this.$t('message.theme_system'),
         light: this.$t('message.theme_light'),
-        dark: this.$t('message.theme_dark')
+        dark: this.$t('message.theme_dark'),
+        system: this.$t('message.theme_auto'),
       };
+    },
+    cursorStyles() {
+      return [
+        { value: 'block', label: this.$t('message.cursor_block') },
+        { value: 'underline', label: this.$t('message.cursor_underline') },
+        { value: 'line', label: this.$t('message.cursor_line') },
+      ];
     },
   },
   methods: {
     show() {
+      this.restoreSettings();
       this.visible = true;
     },
     restoreSettings() {
@@ -290,82 +505,48 @@ export default {
       }
       this.themeMode = theme;
 
-      // S3 config
-      this.s3Config = storage.getS3Config();
+      // decoders
+      this.decoders = storage.getDecoders() || [];
     },
     saveSettings() {
       storage.saveSettings(this.form);
+      storage.saveDecoders(this.decoders);
 
       this.visible = false;
       this.$bus.$emit('reloadSettings', Object.assign({}, this.form));
+      this.$message.success({
+        message: this.$t('message.save_success'),
+        duration: 1500,
+      });
+    },
+    resetToDefault() {
+      this.$confirm(this.$t('message.reset_confirm')).then(() => {
+        this.form = {
+          fontFamily: '',
+          fontSize: 14,
+          keysPageSize: 3000,
+          keyIconStyle: 'compact',
+          editorFontFamily: '',
+          editorFontSize: 14,
+          editorLineNumbers: true,
+          editorFolding: true,
+          editorDragDrop: true,
+          editorLinks: true,
+          cliFontFamily: '',
+          cliFontSize: 14,
+          cliCursorStyle: 'block',
+        };
+        this.themeMode = 'system';
+        this.decoders = [];
+      }).catch(() => {});
     },
     changeTheme() {
       localStorage.theme = this.themeMode;
       globalChangeTheme(this.themeMode);
     },
-    changeZoom() {
-      const { webFrame } = require('electron');
-      let { zoomFactor } = this.form;
-
-      zoomFactor = zoomFactor || 1.0;
-      webFrame.setZoomFactor(zoomFactor);
-    },
-    showImportDialog() {
-      this.importConnectionVisible = true;
-    },
-    loadConnectionFile(file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        this.connectionFileContent = event.target.result;
-      };
-      reader.readAsText(file.raw);
-    },
-    importConnnection() {
-      this.importConnectionVisible = false;
-      let config = this.$util.base64Decode(this.connectionFileContent);
-
-      if (!config) {
-        return;
-      }
-
-      config = JSON.parse(config);
-      // remove all connections first
-      storage.setConnections({});
-      // close all connections
-      this.$bus.$emit('closeConnection');
-      this.$bus.$emit('refreshConnections');
-
-      for (const line of config) {
-        storage.addConnection(line);
-      }
-
-      this.$nextTick(() => {
-        this.$bus.$emit('refreshConnections');
-      });
-
-      this.$message.success({
-        message: this.$t('message.import_success'),
-        duration: 1000,
-      });
-    },
-    exportConnection() {
-      let connections = storage.getConnections(true);
-      connections = this.$util.base64Encode(JSON.stringify(connections));
-      this.$util.createAndDownloadFile('connections.ano', connections);
-      this.visible = false;
-    },
-    checkUpdate() {
-      this.$message.info({
-        message: `${this.$t('message.update_checking')}`,
-        duration: 1500,
-      });
-
-      this.$bus.$emit('update-check', true);
-    },
     bindGetAllFonts() {
       ipcRenderer.on('send-all-fonts', (event, fonts) => {
         fonts.unshift('Default Initial');
-
         this.allFonts = [...new Set(fonts)];
         this.loadingFonts = false;
       });
@@ -376,165 +557,532 @@ export default {
         ipcRenderer.send('get-all-fonts');
       }
     },
-    clearCache() {
-      this.$confirm(this.$t('message.clear_cache_tip')).then(() => {
-        localStorage.clear();
-        this.$message.success(this.$t('message.delete_success'));
-        window.location.reload();
-      }).catch((e) => {
-      });
+    // Decoder methods
+    showAddDecoderDialog() {
+      this.decoderForm = {
+        name: '',
+        decoderPath: '',
+        decoderArgs: [],
+        encoderPath: '',
+        encoderArgs: [],
+        autoDecodeEncode: true,
+      };
+      this.decoderFormTab = 'decoder';
+      this.editingDecoderIndex = -1;
+      this.testInput = '';
+      this.testOutput = '';
+      this.testError = '';
+      this.decoderDialogVisible = true;
     },
-    showHotkeys() {
-      this.$parent.$refs.hotKeysDialog.show();
+    editDecoder(row, index) {
+      this.decoderForm = JSON.parse(JSON.stringify(row));
+      // Ensure arrays exist
+      if (!this.decoderForm.decoderArgs) this.decoderForm.decoderArgs = [];
+      if (!this.decoderForm.encoderArgs) this.decoderForm.encoderArgs = [];
+      this.decoderFormTab = 'decoder';
+      this.editingDecoderIndex = index;
+      this.testInput = '';
+      this.testOutput = '';
+      this.testError = '';
+      this.decoderDialogVisible = true;
     },
-    // S3 Sync methods
-    onSyncModeChange() {
-      storage.saveS3Config(this.s3Config);
+    copyDecoder(row) {
+      const newDecoder = JSON.parse(JSON.stringify(row));
+      newDecoder.name = `${row.name} (${this.$t('message.copy')})`;
+      this.decoders.push(newDecoder);
+      this.$message.success(this.$t('message.copy_success'));
     },
-    showS3ConfigDialog() {
-      this.s3ConfigDialogVisible = true;
+    deleteDecoder(index) {
+      this.$confirm(this.$t('message.confirm_delete')).then(() => {
+        this.decoders.splice(index, 1);
+      }).catch(() => {});
     },
-    saveS3Config() {
-      storage.saveS3Config(this.s3Config);
-      this.$message.success({
-        message: this.$t('message.modify_success'),
-        duration: 1000,
-      });
-      this.s3ConfigDialogVisible = false;
-    },
-    createS3Service() {
-      return new S3SyncService(this.s3Config);
-    },
-    async testS3Connection() {
-      if (!this.validateS3Config()) return;
-
-      this.s3Testing = true;
-      try {
-        const result = await this.createS3Service().testConnection();
-        if (result.success) {
-          this.$message.success(this.$t('message.s3_connection_success'));
-        } else {
-          this.$message.error(`${this.$t('message.s3_connection_failed')}: ${result.error}`);
-        }
-      } catch (error) {
-        this.$message.error(`${this.$t('message.s3_connection_failed')}: ${error.message}`);
-      } finally {
-        this.s3Testing = false;
+    saveDecoder() {
+      if (!this.decoderForm.name) {
+        this.$message.warning(this.$t('message.decoder_name_required'));
+        return;
       }
-    },
-    async s3Upload() {
-      if (!this.validateS3Config()) return;
-
-      try {
-        await this.$confirm(this.$t('message.s3_upload_confirm'));
-      } catch {
+      if (!this.decoderForm.decoderPath) {
+        this.$message.warning(this.$t('message.decoder_path_required'));
         return;
       }
 
-      this.s3Syncing = true;
-      try {
-        await this.createS3Service().upload();
-        this.$message.success(this.$t('message.s3_upload_success'));
-      } catch (error) {
-        this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
-      } finally {
-        this.s3Syncing = false;
-      }
-    },
-    async s3Download() {
-      if (!this.validateS3Config()) return;
+      const decoder = {
+        ...this.decoderForm,
+        enabled: true,
+        command: `${this.decoderForm.decoderPath} ${this.decoderForm.decoderArgs.join(' ')}`.trim(),
+      };
 
-      try {
-        await this.$confirm(this.$t('message.s3_download_confirm'));
-      } catch {
+      if (this.editingDecoderIndex >= 0) {
+        this.$set(this.decoders, this.editingDecoderIndex, decoder);
+      } else {
+        this.decoders.push(decoder);
+      }
+
+      this.decoderDialogVisible = false;
+    },
+    addDecoderArg() {
+      const key = this.decoderFormTab + 'Args';
+      this.decoderForm[key].push('');
+    },
+    removeDecoderArg(index) {
+      const key = this.decoderFormTab + 'Args';
+      this.decoderForm[key].splice(index, 1);
+    },
+    selectDecoderPath() {
+      const dialog = remote.dialog;
+      dialog.showOpenDialog({
+        properties: ['openFile'],
+      }).then(result => {
+        if (!result.canceled && result.filePaths.length > 0) {
+          const key = this.decoderFormTab + 'Path';
+          this.decoderForm[key] = result.filePaths[0];
+        }
+      });
+    },
+    showDecoderHelp() {
+      this.$alert(this.$t('message.decoder_help_content'), this.$t('message.help'), {
+        confirmButtonText: this.$t('el.messagebox.confirm'),
+        dangerouslyUseHTMLString: true,
+      });
+    },
+    // Test decoder
+    testDecoder(decoder) {
+      this.decoderForm = JSON.parse(JSON.stringify(decoder));
+      if (!this.decoderForm.decoderArgs) this.decoderForm.decoderArgs = [];
+      if (!this.decoderForm.encoderArgs) this.decoderForm.encoderArgs = [];
+      this.decoderFormTab = 'decoder';
+      this.editingDecoderIndex = this.decoders.indexOf(decoder);
+      this.testInput = '';
+      this.testOutput = '';
+      this.testError = '';
+      this.decoderDialogVisible = true;
+    },
+    runDecoderTest() {
+      const path = this.decoderForm[this.decoderFormTab + 'Path'];
+      const args = this.decoderForm[this.decoderFormTab + 'Args'] || [];
+      
+      if (!path) {
+        this.$message.warning(this.$t('message.decoder_path_required'));
         return;
       }
-
-      this.s3Syncing = true;
+      
+      this.testing = true;
+      this.testOutput = '';
+      this.testError = '';
+      
       try {
-        const s3Service = this.createS3Service();
-        const syncData = await s3Service.download();
-        s3Service.applyDownloadedData(syncData);
-
-        // Refresh connections
-        this.$bus.$emit('closeConnection');
-        this.$bus.$emit('refreshConnections');
-
-        this.$message.success(this.$t('message.s3_download_success'));
-      } catch (error) {
-        this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
-      } finally {
-        this.s3Syncing = false;
+        const child = spawn(path, args.filter(a => a), {
+          shell: true,
+          timeout: 10000,
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        
+        child.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+        
+        child.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+        
+        child.on('close', (code) => {
+          this.testing = false;
+          if (code === 0) {
+            this.testOutput = stdout || this.$t('message.test_success');
+          } else {
+            this.testError = stderr || `Exit code: ${code}`;
+          }
+        });
+        
+        child.on('error', (err) => {
+          this.testing = false;
+          this.testError = err.message;
+        });
+        
+        // Write test input
+        if (this.testInput) {
+          child.stdin.write(this.testInput);
+        }
+        child.stdin.end();
+        
+      } catch (err) {
+        this.testing = false;
+        this.testError = err.message;
       }
     },
-    validateS3Config() {
-      const { endpoint, accessKeyId, secretAccessKey, bucket } = this.s3Config;
-      const validations = [
-        [!endpoint, 's3_endpoint_required'],
-        [!accessKeyId, 's3_accesskey_required'],
-        [!secretAccessKey, 's3_secretkey_required'],
-        [!bucket, 's3_bucket_required'],
-      ];
-
-      for (const [condition, messageKey] of validations) {
-        if (condition) {
-          this.$message.warning(this.$t(`message.${messageKey}`));
-          return false;
-        }
+    onDecoderStatusChange() {
+      // Auto save when status changes
+      storage.saveDecoders(this.decoders);
+    },
+    // Batch operations
+    handleDecoderCommand(command) {
+      switch (command) {
+        case 'import':
+          this.importDecoderDialogVisible = true;
+          break;
+        case 'export':
+          this.exportDecoders();
+          break;
+        case 'enableAll':
+          this.decoders.forEach(d => d.enabled = true);
+          storage.saveDecoders(this.decoders);
+          break;
+        case 'disableAll':
+          this.decoders.forEach(d => d.enabled = false);
+          storage.saveDecoders(this.decoders);
+          break;
       }
-      return true;
+    },
+    exportDecoders() {
+      const data = JSON.stringify(this.decoders, null, 2);
+      this.$util.createAndDownloadFile('decoders.json', data);
+      this.$message.success(this.$t('message.export_success'));
+    },
+    loadDecoderFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.importDecoderContent = event.target.result;
+      };
+      reader.readAsText(file.raw);
+    },
+    importDecoders() {
+      try {
+        const imported = JSON.parse(this.importDecoderContent);
+        if (!Array.isArray(imported)) {
+          throw new Error('Invalid format');
+        }
+        // Merge with existing decoders
+        imported.forEach(decoder => {
+          if (decoder.name && decoder.decoderPath) {
+            // Check if already exists
+            const exists = this.decoders.find(d => d.name === decoder.name);
+            if (!exists) {
+              this.decoders.push(decoder);
+            }
+          }
+        });
+        this.importDecoderDialogVisible = false;
+        this.importDecoderContent = '';
+        if (this.$refs.decoderUpload) {
+          this.$refs.decoderUpload.clearFiles();
+        }
+        this.$message.success(this.$t('message.import_success'));
+      } catch (err) {
+        this.$message.error(this.$t('message.import_failed') + ': ' + err.message);
+      }
     },
   },
   mounted() {
-    this.restoreSettings();
     this.bindGetAllFonts();
   },
 };
 </script>
 
 <style type="text/css">
-.setting-main-dialog {
-  width: 80%;
-  max-width: 900px;
-  margin-top: 7vh !important;
+/* Preferences Dialog */
+.pref-dialog {
+  width: 720px !important;
+  max-width: 90vw;
+  margin-top: 5vh !important;
+}
+.pref-dialog .el-dialog__header {
+  display: none;
+}
+.pref-dialog .el-dialog__body {
+  padding: 0;
 }
 
-.dark-mode .el-upload-dragger {
-  background: inherit;
+.pref-container {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  max-height: 600px;
 }
 
-.setting-main-dialog .current-version a {
-  color: grey;
-  font-size: 95%;
+.pref-header {
+  padding: 20px 24px;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid #e4e7ed;
+}
+.dark-mode .pref-header {
+  border-color: #4a5a64;
 }
 
-.setting-main-dialog .setting-card {
+.pref-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Navigation */
+.pref-nav {
+  width: 120px;
+  padding: 16px 0;
+  border-right: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+.dark-mode .pref-nav {
+  border-color: #4a5a64;
+}
+
+.pref-nav-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #606266;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+.dark-mode .pref-nav-item {
+  color: #b0bec5;
+}
+.pref-nav-item:hover {
+  color: #f56c6c;
+}
+.pref-nav-item.active {
+  color: #f56c6c;
+  border-left-color: #f56c6c;
+  font-weight: 500;
+}
+
+/* Right Content */
+.pref-content {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.pref-panel {
+  min-height: 100%;
+}
+
+/* Form Items */
+.pref-form-item {
+  margin-bottom: 20px;
+}
+
+.pref-form-row {
+  display: flex;
+  gap: 20px;
+}
+.pref-form-row .flex-1 {
+  flex: 1;
+}
+
+.pref-label {
+  display: block;
   margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266;
 }
-.setting-main-dialog .setting-card .el-card__header {
-  font-size: 105%;
-  font-weight: bold;
+.dark-mode .pref-label {
+  color: #b0bec5;
 }
-
-.setting-main-dialog .setting-card .setting-row {
-  flex-wrap: wrap;
-}
-
-/* add height: fix el-select jitter when multiple*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag {
-  height: 21px;
-  max-width: 98%;
+.pref-label i {
+  margin-left: 4px;
+  color: #909399;
+  cursor: help;
 }
 
-/*label style inside el-select multiple*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-select__tags-text {
-  display: inline-block;
-  max-width: 90%;
+/* Button Group */
+.pref-btn-group {
+  display: inline-flex;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dark-mode .pref-btn-group {
+  border-color: #4a5a64;
+}
+.pref-btn {
+  padding: 8px 16px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  color: #606266;
+  transition: all 0.2s;
+}
+.dark-mode .pref-btn {
+  background: #2d3a40;
+  color: #b0bec5;
+}
+.pref-btn:not(:last-child) {
+  border-right: 1px solid #dcdfe6;
+}
+.dark-mode .pref-btn:not(:last-child) {
+  border-color: #4a5a64;
+}
+.pref-btn:hover {
+  color: #f56c6c;
+}
+.pref-btn.active {
+  background: #f56c6c;
+  color: #fff;
+}
+
+/* Input Styles */
+.pref-select {
+  width: 100%;
+  max-width: 300px;
+}
+.pref-input {
+  width: 100%;
+  max-width: 300px;
+}
+.pref-number-input {
+  width: 140px;
+}
+
+/* Checkbox Group */
+.pref-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pref-checkbox-group .el-checkbox {
+  margin: 0;
+}
+
+/* Decoder Tab */
+.pref-decoder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.pref-decoder-actions {
+  display: flex;
+  gap: 8px;
+}
+.pref-decoder-table {
+  width: 100%;
+}
+.pref-decoder-table .decoder-disabled {
+  color: #c0c4cc;
+}
+.pref-decoder-table .decoder-command {
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
 }
-/*fix close icon vertical align*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-tag__close {
-  vertical-align: super;
+.pref-decoder-table .danger-text {
+  color: #f56c6c;
+}
+.pref-decoder-table .danger-text:hover {
+  color: #f78989;
+}
+
+/* Footer */
+.pref-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-top: 1px solid #e4e7ed;
+}
+.dark-mode .pref-footer {
+  border-color: #4a5a64;
+}
+.pref-footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* Decoder Dialog */
+.decoder-dialog .el-dialog__body {
+  padding-top: 10px;
+}
+.decoder-tabs {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e4e7ed;
+}
+.dark-mode .decoder-tabs {
+  border-color: #4a5a64;
+}
+.decoder-tab {
+  display: inline-block;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: #606266;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.dark-mode .decoder-tab {
+  color: #b0bec5;
+}
+.decoder-tab.active {
+  color: #f56c6c;
+  border-bottom-color: #f56c6c;
+}
+.decoder-path-input {
+  display: flex;
+  gap: 8px;
+}
+.decoder-path-input .el-input {
+  flex: 1;
+}
+.decoder-arg-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.decoder-arg-row .el-input {
+  flex: 1;
+}
+.decoder-add-arg {
+  width: 100%;
+}
+.decoder-test-actions {
+  margin-top: 8px;
+}
+.decoder-test-output,
+.decoder-test-error {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.decoder-test-output {
+  background: #f0f9eb;
+  border: 1px solid #e1f3d8;
+}
+.decoder-test-output label {
+  color: #67c23a;
+  font-weight: 500;
+}
+.decoder-test-output pre {
+  margin: 8px 0 0;
+  color: #67c23a;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.decoder-test-error {
+  background: #fef0f0;
+  border: 1px solid #fde2e2;
+}
+.decoder-test-error label {
+  color: #f56c6c;
+  font-weight: 500;
+}
+.decoder-test-error pre {
+  margin: 8px 0 0;
+  color: #f56c6c;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.dark-mode .decoder-test-output {
+  background: rgba(103, 194, 58, 0.1);
+  border-color: rgba(103, 194, 58, 0.3);
+}
+.dark-mode .decoder-test-error {
+  background: rgba(245, 108, 108, 0.1);
+  border-color: rgba(245, 108, 108, 0.3);
 }
 </style>
