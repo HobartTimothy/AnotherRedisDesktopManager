@@ -277,6 +277,16 @@ const en = {
     s3_accesskey_required: 'Access Key ID is required',
     s3_secretkey_required: 'Secret Access Key is required',
     s3_bucket_required: 'Bucket is required',
+    // S3 Error Messages
+    s3_error_signature: 'Signature verification failed. Please check Access Key and Secret Key',
+    s3_error_accesskey: 'Invalid Access Key ID',
+    s3_error_access_denied: 'Access denied. Please check permission settings',
+    s3_error_no_bucket: 'Bucket does not exist',
+    s3_error_no_key: 'File does not exist. Please upload configuration first',
+    s3_error_timeout: 'Request timeout. Please check network connection',
+    s3_error_network: 'Network error. Please check network connection and endpoint',
+    s3_error_invalid_bucket: 'Invalid bucket name',
+    s3_error_unknown: 'Unknown error',
     // Preferences
     general_config: 'General',
     editor: 'Editor',

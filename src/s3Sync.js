@@ -126,21 +126,32 @@ class S3SyncService {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve({ statusCode: res.statusCode, data });
           } else {
-            // Extract error message from XML response
-            const errorMatch = data.match(/<Message>([^<]+)<\/Message>/);
-            const errorMsg = errorMatch ? errorMatch[1] : data.slice(0, 200);
-            reject(new Error(`HTTP ${res.statusCode}: ${errorMsg}`));
+            // Extract error code and message from XML response
+            const codeMatch = data.match(/<Code>([^<]+)<\/Code>/);
+            const errorCode = codeMatch ? codeMatch[1] : '';
+            const error = new Error();
+            error.statusCode = res.statusCode;
+            error.code = errorCode;
+            error.isS3Error = true;
+            reject(error);
           }
         });
       });
 
       req.on('timeout', () => {
         req.destroy();
-        reject(new Error('Request timeout'));
+        const error = new Error();
+        error.code = 'RequestTimeout';
+        error.isS3Error = true;
+        reject(error);
       });
 
       req.on('error', (err) => {
-        reject(new Error(`Network error: ${err.message}`));
+        const error = new Error();
+        error.code = 'NetworkError';
+        error.originalMessage = err.message;
+        error.isS3Error = true;
+        reject(error);
       });
 
       req.write(body);
@@ -245,7 +256,7 @@ class S3SyncService {
       await this.request('GET', path);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error };
     }
   }
 }

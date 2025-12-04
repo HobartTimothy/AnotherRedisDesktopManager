@@ -277,6 +277,16 @@ const cn = {
     s3_accesskey_required: 'Access Key ID不能为空',
     s3_secretkey_required: 'Secret Access Key不能为空',
     s3_bucket_required: '存储桶不能为空',
+    // S3 错误消息
+    s3_error_signature: '签名验证失败，请检查 Access Key 和 Secret Key 是否正确',
+    s3_error_accesskey: 'Access Key ID 无效',
+    s3_error_access_denied: '访问被拒绝，请检查权限配置',
+    s3_error_no_bucket: '存储桶不存在',
+    s3_error_no_key: '文件不存在，请先上传配置',
+    s3_error_timeout: '请求超时，请检查网络连接',
+    s3_error_network: '网络错误，请检查网络连接和服务地址',
+    s3_error_invalid_bucket: '存储桶名称无效',
+    s3_error_unknown: '未知错误',
     // 偏好设置
     general_config: '常规配置',
     editor: '编辑器',

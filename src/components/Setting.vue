@@ -1032,6 +1032,35 @@ export default {
       storage.saveS3Config(this.s3Config);
       this.$message.success(this.$t('message.save_success'));
     },
+    formatS3Error(error) {
+      if (!error.isS3Error) {
+        return error.message || String(error);
+      }
+      
+      // Map S3 error codes to i18n keys
+      const errorMap = {
+        'SignatureDoesNotMatch': 's3_error_signature',
+        'InvalidAccessKeyId': 's3_error_accesskey',
+        'AccessDenied': 's3_error_access_denied',
+        'NoSuchBucket': 's3_error_no_bucket',
+        'NoSuchKey': 's3_error_no_key',
+        'RequestTimeout': 's3_error_timeout',
+        'NetworkError': 's3_error_network',
+        'InvalidBucketName': 's3_error_invalid_bucket',
+      };
+      
+      const i18nKey = errorMap[error.code];
+      if (i18nKey) {
+        return this.$t(`message.${i18nKey}`);
+      }
+      
+      // Fallback: show HTTP status code if available
+      if (error.statusCode) {
+        return `HTTP ${error.statusCode}: ${error.code || this.$t('message.s3_error_unknown')}`;
+      }
+      
+      return error.code || this.$t('message.s3_error_unknown');
+    },
     async testS3Connection() {
       if (!this.validateS3Config()) return;
 
@@ -1041,10 +1070,10 @@ export default {
         if (result.success) {
           this.$message.success(this.$t('message.s3_connection_success'));
         } else {
-          this.$message.error(`${this.$t('message.s3_connection_failed')}: ${result.error}`);
+          this.$message.error(`${this.$t('message.s3_connection_failed')}: ${this.formatS3Error(result.error)}`);
         }
       } catch (error) {
-        this.$message.error(`${this.$t('message.s3_connection_failed')}: ${error.message}`);
+        this.$message.error(`${this.$t('message.s3_connection_failed')}: ${this.formatS3Error(error)}`);
       } finally {
         this.s3Testing = false;
       }
@@ -1068,7 +1097,7 @@ export default {
         await this.createS3Service().upload();
         this.$message.success(this.$t('message.s3_upload_success'));
       } catch (error) {
-        this.$message.error(`${this.$t('message.s3_upload_failed')}: ${error.message}`);
+        this.$message.error(`${this.$t('message.s3_upload_failed')}: ${this.formatS3Error(error)}`);
       } finally {
         this.s3Syncing = false;
       }
@@ -1097,7 +1126,7 @@ export default {
 
         this.$message.success(this.$t('message.s3_download_success'));
       } catch (error) {
-        this.$message.error(`${this.$t('message.s3_download_failed')}: ${error.message}`);
+        this.$message.error(`${this.$t('message.s3_download_failed')}: ${this.formatS3Error(error)}`);
       } finally {
         this.s3Syncing = false;
       }
