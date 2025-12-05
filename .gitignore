@@ -14,14 +14,8 @@ yarn-error.log*
 *.njsproj
 *.sln
 # node_modules and dependencies
-node_modules/
-/dist/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Logs
-*.log
 
 # Runtime data
 *.pid
@@ -99,7 +93,6 @@ __unconfig_vite.config.*
 *~
 
 # OS generated files
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
@@ -108,27 +101,19 @@ ehthumbs.db
 Thumbs.db
 
 # Visual Studio
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.vcxproj*
 *.vcxproj.filters
 
 # Mac files
-.DS_Store
 .AppleDouble
 .LSOverride
 
 # Thumbnails
-._*
 
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
-.Spotlight-V100
 .TemporaryItems
-.Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
 

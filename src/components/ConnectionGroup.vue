@@ -28,7 +28,10 @@
         @sortConnections="$emit('sortConnections', $event)" />
       
       <!-- Group Connections -->
-      <div class="group-connections" :ref="'groupConnections_' + group.key">
+      <div 
+        class="group-connections" 
+        :ref="'groupConnections_' + group.key"
+        :data-group-key="group.key">
         <ConnectionWrapper
           v-for="(item, index) of connections"
           :key="item.key ? item.key : item.connectionName"
@@ -212,17 +215,28 @@ export default {
     },
     totalCount() {
       // Count connections in this group and all child groups recursively
-      let count = this.connections.length;
+      // 实时响应连接和分组的变化
+      if (!this.allConnections || !this.allGroups) {
+        return 0;
+      }
+      
+      // 直接从 allConnections 过滤当前分组的连接，确保响应式更新
+      // 这样可以确保当连接的 groupKey 变化时，计算属性能够自动重新计算
+      let count = this.allConnections.filter(c => (c.groupKey || '') === (this.group.key || '')).length;
+      
+      // 递归统计所有子分组中的连接数
       const countRecursive = (parentKey) => {
-        const children = this.allGroups.filter(g => g.parentKey === parentKey);
+        // 访问 allGroups 数组以触发响应性追踪
+        const children = this.allGroups.filter(g => (g.parentKey || '') === (parentKey || ''));
         for (const child of children) {
-          // Count connections directly in this child group
-          const childConnections = this.allConnections.filter(c => c.groupKey === child.key);
+          // 访问 allConnections 数组以触发响应性追踪
+          const childConnections = this.allConnections.filter(c => (c.groupKey || '') === (child.key || ''));
           count += childConnections.length;
-          // Recursively count connections in child's sub-groups
+          // 递归统计子分组的所有子分组
           countRecursive(child.key);
         }
       };
+      
       countRecursive(this.group.key);
       return count;
     },
@@ -236,7 +250,8 @@ export default {
       this.$bus.$emit('showNewConnectionWithGroup', this.group.key);
     },
     getGroupConnections(groupKey) {
-      return this.allConnections.filter(c => c.groupKey === groupKey);
+      // 使用与 totalCount 相同的规范化比较方式，确保一致性
+      return this.allConnections.filter(c => (c.groupKey || '') === (groupKey || ''));
     },
     showAddSubGroupDialog() {
       this.newSubGroupName = '';
@@ -403,17 +418,130 @@ export default {
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
             onEnd: (e) => {
-              this.$emit('sortConnections', {
-                groupKey: this.group.key,
-                oldIndex: e.oldIndex,
-                newIndex: e.newIndex,
-                from: e.from,
-                to: e.to,
-              });
+              // 检测是否跨容器拖拽
+              const isCrossContainer = e.from !== e.to;
+              
+              if (isCrossContainer) {
+                // 跨容器拖拽：处理连接移动到其他分组或未分组区域
+                this.handleCrossContainerDrag(e);
+              } else {
+                // 同一容器内排序
+                this.$emit('sortConnections', {
+                  groupKey: this.group.key,
+                  oldIndex: e.oldIndex,
+                  newIndex: e.newIndex,
+                  from: e.from,
+                  to: e.to,
+                });
+              }
             },
           });
         }
       });
+    },
+    // 处理跨容器拖拽
+    handleCrossContainerDrag(e) {
+      // 从拖拽元素中获取连接的 connectionName
+      const connectionName = this.getConnectionNameFromElement(e.item);
+      if (!connectionName) {
+        return;
+      }
+
+      // 获取源分组的 groupKey（可能是 null 表示未分组）
+      const sourceGroupKey = this.getGroupKeyFromContainer(e.from);
+      
+      // 获取目标分组的 groupKey
+      // 如果目标容器是当前分组的容器，使用当前分组的 key
+      const currentContainer = this.$refs['groupConnections_' + this.group.key];
+      let targetGroupKey;
+      if (e.to === currentContainer) {
+        // 拖拽到当前分组
+        targetGroupKey = this.group.key;
+      } else {
+        // 拖拽到其他容器，从容器元素中获取
+        // 如果是未分组容器，getGroupKeyFromContainer 会返回 null
+        targetGroupKey = this.getGroupKeyFromContainer(e.to);
+      }
+      
+      // 找到连接配置（从所有连接中查找，不仅仅是过滤后的）
+      const connection = this.allConnections.find(c => {
+        const connName = c.connectionName || c.name;
+        return connName === connectionName;
+      });
+
+      if (!connection) {
+        return;
+      }
+
+      // 规范化比较 groupKey，处理 null、undefined 和空字符串
+      const normalizedSourceKey = (sourceGroupKey || '');
+      const normalizedTargetKey = (targetGroupKey || '');
+      
+      // 如果目标分组和源分组不同，更新连接的 groupKey
+      if (normalizedTargetKey !== normalizedSourceKey) {
+        // 使用 storage.moveConnectionToGroup 来更新连接的 groupKey
+        // 如果 targetGroupKey 是 null（拖拽到未分组），传入空字符串
+        storage.moveConnectionToGroup(connection, normalizedTargetKey);
+        
+        // 刷新连接列表，立即刷新以确保数量统计正确更新
+        this.$emit('refresh');
+        
+        this.$message.success({
+          message: this.$t('message.modify_success'),
+          duration: 1000,
+        });
+      }
+    },
+    // 从 DOM 元素中获取连接的 connectionName
+    getConnectionNameFromElement(element) {
+      // 查找 connection-anchor-* id
+      const menuElement = element.querySelector('[id^="connection-anchor-"]');
+      if (menuElement && menuElement.id) {
+        const match = menuElement.id.match(/^connection-anchor-(.+)$/);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+      
+      // 如果找不到 id，尝试从 el-submenu 的 index 属性获取
+      const submenu = element.querySelector('.el-submenu');
+      if (submenu && submenu.getAttribute('index')) {
+        return submenu.getAttribute('index');
+      }
+      
+      return null;
+    },
+    // 从容器元素中获取分组的 groupKey
+    getGroupKeyFromContainer(container) {
+      if (!container) {
+        return null;
+      }
+      
+      // 首先检查容器本身是否有 data-ungrouped 属性
+      if (container.hasAttribute('data-ungrouped')) {
+        return null;
+      }
+      
+      // 如果容器有 data-group-key 属性，直接返回
+      if (container.hasAttribute('data-group-key')) {
+        const groupKey = container.getAttribute('data-group-key');
+        return groupKey || null;
+      }
+      
+      // 检查父元素中是否有 data-ungrouped（未分组容器）
+      const ungroupedWrapper = container.closest('[data-ungrouped]');
+      if (ungroupedWrapper) {
+        return null;
+      }
+      
+      // 尝试从父元素中查找 group-key
+      const groupElement = container.closest('[data-group-key]');
+      if (groupElement) {
+        const groupKey = groupElement.getAttribute('data-group-key');
+        return groupKey || null;
+      }
+      
+      return null;
     },
   },
 };

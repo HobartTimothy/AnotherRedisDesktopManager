@@ -6,10 +6,11 @@
     @open="openConnection()"
     class="connection-menu"
     active-text-color="#ffd04b">
-    <el-submenu :index="config.connectionName">
+    <el-submenu :index="config.connectionName" @contextmenu.native.prevent.stop="handleSubmenuContextMenu">
       <!-- connection menu -->
       <ConnectionMenu
         slot="title"
+        ref="connectionMenuComponent"
         :config="config"
         :client='client'
         @changeColor='setColor'
@@ -232,6 +233,12 @@ export default {
       } else {
         ulDom.classList.add(className);
         ulDom.style.setProperty('--menu-color', color);
+      }
+    },
+    handleSubmenuContextMenu(e) {
+      // Forward context menu event to ConnectionMenu component
+      if (this.$refs.connectionMenuComponent && this.$refs.connectionMenuComponent.showContextMenu) {
+        this.$refs.connectionMenuComponent.showContextMenu(e);
       }
     },
     scrollToConnection() {

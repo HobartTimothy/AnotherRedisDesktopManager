@@ -14,7 +14,7 @@
       {{config.connectionName}}
     </div>
     <el-dropdown-menu class='connection-menu-more-ul' slot="dropdown">
-      <!-- move to group submenu -->
+      <!-- 移动到组 -->
       <el-dropdown-item>
         <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
           <div slot="reference" class="move-to-group-trigger">
@@ -62,48 +62,32 @@
         </el-popover>
       </el-dropdown-item>
 
-      <el-dropdown-item @click.native='closeConnection' divided>
-        <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
+      <!-- 连接管理 -->
+      <el-dropdown-item divided>
+        <span style="color: #909399; font-weight: bold;">{{ $t('message.connection_management') }}</span>
       </el-dropdown-item>
-      <el-dropdown-item @click.native='showEditConnection'>
+      <el-dropdown-item @click.native='handleEditConnection'>
         <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
       </el-dropdown-item>
-      <el-dropdown-item @click.native='deleteConnection'>
+      <el-dropdown-item @click.native='handleDeleteConnection'>
         <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
       </el-dropdown-item>
-      <el-dropdown-item @click.native='duplicateConnection'>
+      <el-dropdown-item @click.native='handleDuplicateConnection'>
         <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
       </el-dropdown-item>
 
-      <el-dropdown-item @click.native='memoryAnalisys' divided>
-        <span><i class='more-operate-ico fa fa-table'></i>&nbsp;{{ $t('message.memory_analysis') }}</span>
+      <!-- 导入导出 -->
+      <el-dropdown-item divided>
+        <span style="color: #909399; font-weight: bold;">{{ $t('message.import_export') }}</span>
       </el-dropdown-item>
-      <el-dropdown-item @click.native='slowLog'>
-        <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
-      </el-dropdown-item>
-
-      <!-- menu color picker -->
-      <el-tooltip placement="right" effect="light">
-        <el-color-picker
-          slot='content'
-          v-model="menuColor"
-          @change='changeColor'
-          :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff']">
-        </el-color-picker>
-
-        <el-dropdown-item divided>
-          <span><i class='more-operate-ico fa fa-bookmark-o'></i>&nbsp;{{ $t('message.mark_color') }}</span>
-        </el-dropdown-item>
-      </el-tooltip>
-
-      <el-dropdown-item @click.native='flushDB' divided>
-        <span><i class='more-operate-ico fa fa-exclamation-triangle'></i>&nbsp;{{ $t('message.flushdb') }}</span>
-      </el-dropdown-item>
-      <el-dropdown-item @click.native='importKeys'>
+      <el-dropdown-item @click.native='handleImportKeys'>
         <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import_key') }}</span>
       </el-dropdown-item>
-      <el-dropdown-item @click.native='execFileCMDS'>
-        <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import_cmd') }}</span>
+      <el-dropdown-item @click.native='handleExportKeys'>
+        <span><i class='more-operate-ico el-icon-upload2'></i>&nbsp;{{ $t('message.export_key') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='handleExportCMDS'>
+        <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.export_cmd') }}</span>
       </el-dropdown-item>
     </el-dropdown-menu>
   </el-dropdown>
@@ -154,13 +138,26 @@ export default {
     document.removeEventListener('click', this.hideContextMenu);
   },
   methods: {
-    showContextMenu() {
+    showContextMenu(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      // Show this menu
       this.connectionMenuVisible = true;
       this.$nextTick(() => {
-        this.$refs.connectionDropdown && this.$refs.connectionDropdown.updatePopper && this.$refs.connectionDropdown.updatePopper();
+        if (this.$refs.connectionDropdown) {
+          if (this.$refs.connectionDropdown.updatePopper) {
+            this.$refs.connectionDropdown.updatePopper();
+          }
+        }
       });
     },
-    hideContextMenu() {
+    hideContextMenu(e) {
+      // Don't hide if clicking inside the dropdown menu
+      if (e && e.target && e.target.closest && e.target.closest('.connection-menu-more-ul')) {
+        return;
+      }
       this.connectionMenuVisible = false;
     },
     connectionTitle() {
@@ -198,6 +195,10 @@ export default {
     refreshConnection() {
       this.$emit('refreshConnection');
     },
+    handleEditConnection() {
+      this.hideContextMenu();
+      this.showEditConnection();
+    },
     showEditConnection() {
       // connection is cloesd, do not display confirm
       if (!this.client) {
@@ -223,6 +224,10 @@ export default {
     editConnectionFinished(newConfig) {
       this.$bus.$emit('refreshConnections');
     },
+    handleDuplicateConnection() {
+      this.hideContextMenu();
+      this.duplicateConnection();
+    },
     duplicateConnection() {
       // empty key\order , just as a new connection
       const newConfig = {
@@ -239,6 +244,10 @@ export default {
       setTimeout(() => {
         this.$bus.$emit('duplicateConnection', newConfig);
       }, 100);
+    },
+    handleDeleteConnection() {
+      this.hideContextMenu();
+      this.deleteConnection();
     },
     deleteConnection() {
       this.$confirm(
@@ -290,6 +299,10 @@ export default {
       }
 
       this.$bus.$emit('slowLog', this.client, this.config.connectionName);
+    },
+    handleImportKeys() {
+      this.hideContextMenu();
+      this.importKeys();
     },
     importKeys() {
       dialog.showOpenDialog(getCurrentWindow(), {
@@ -463,6 +476,155 @@ export default {
         duration: 1000,
       });
     },
+    handleExportKeys() {
+      this.hideContextMenu();
+      this.exportKeys();
+    },
+    exportKeys() {
+      if (!this.client) {
+        return this.$message.warning(this.$t('message.please_open_connection_first') || '请先打开连接');
+      }
+
+      this.$message.info('开始导出Keys，请稍候...');
+      const allKeys = [];
+      const nodes = this.client.nodes ? this.client.nodes('master') : [this.client];
+      const scanStreams = [];
+
+      // 扫描所有keys
+      nodes.forEach((node) => {
+        const stream = node.scanBufferStream({ match: '*', count: 50000 });
+        scanStreams.push(stream);
+
+        stream.on('data', (keys) => {
+          if (keys && keys.length) {
+            allKeys.push(...keys);
+          }
+        });
+
+        stream.on('error', (e) => {
+          this.$message.error(`扫描Keys失败: ${e.message}`);
+        });
+      });
+
+      // 等待所有扫描完成
+      Promise.all(scanStreams.map(stream => new Promise((resolve) => {
+        stream.on('end', resolve);
+        stream.on('error', resolve);
+      }))).then(() => {
+        if (allKeys.length === 0) {
+          return this.$message.warning('没有找到任何Keys');
+        }
+
+        // 导出所有keys
+        this.$message.info(`找到 ${allKeys.length} 个Keys，开始导出...`);
+        const lines = [];
+        const promiseQueue = [];
+
+        allKeys.forEach((key) => {
+          promiseQueue.push(this.client.callBuffer('DUMP', key));
+          promiseQueue.push(this.client.callBuffer('PTTL', key));
+        });
+
+        Promise.allSettled(promiseQueue).then((reply) => {
+          for (let i = 0; i < reply.length; i += 2) {
+            if (reply[i].status === 'fulfilled' && reply[i + 1].status === 'fulfilled') {
+              const key = allKeys[i / 2];
+              const keyHex = Buffer.isBuffer(key) ? key.toString('hex') : Buffer.from(key).toString('hex');
+              const valueHex = reply[i].value.toString('hex');
+              const ttl = reply[i + 1].value || 0;
+
+              const line = `${keyHex},${valueHex},${ttl}`;
+              lines.push(line);
+            }
+          }
+
+          // 保存文件
+          const fileName = `Dump_${this.config.connectionName}_${(new Date()).toISOString().substr(0, 10).replaceAll('-', '')}.csv`;
+          this.$util.createAndDownloadFile(fileName, lines.join('\n'));
+          this.$message.success({
+            message: `导出成功！共导出 ${lines.length} 个Keys`,
+            duration: 3000,
+          });
+        }).catch((e) => {
+          this.$message.error(`导出失败: ${e.message}`);
+        });
+      });
+    },
+    handleExportCMDS() {
+      this.hideContextMenu();
+      this.exportCMDS();
+    },
+    exportCMDS() {
+      if (!this.client) {
+        return this.$message.warning(this.$t('message.please_open_connection_first') || '请先打开连接');
+      }
+
+      this.$message.info('开始导出命令，请稍候...');
+      const allKeys = [];
+      const nodes = this.client.nodes ? this.client.nodes('master') : [this.client];
+      const scanStreams = [];
+
+      // 扫描所有keys
+      nodes.forEach((node) => {
+        const stream = node.scanBufferStream({ match: '*', count: 50000 });
+        scanStreams.push(stream);
+
+        stream.on('data', (keys) => {
+          if (keys && keys.length) {
+            allKeys.push(...keys);
+          }
+        });
+
+        stream.on('error', (e) => {
+          this.$message.error(`扫描Keys失败: ${e.message}`);
+        });
+      });
+
+      // 等待所有扫描完成
+      Promise.all(scanStreams.map(stream => new Promise((resolve) => {
+        stream.on('end', resolve);
+        stream.on('error', resolve);
+      }))).then(() => {
+        if (allKeys.length === 0) {
+          return this.$message.warning('没有找到任何Keys');
+        }
+
+        // 导出命令 - 使用RESTORE命令格式（更通用）
+        this.$message.info(`找到 ${allKeys.length} 个Keys，开始导出命令...`);
+        const commands = [];
+        const promiseQueue = [];
+
+        allKeys.forEach((key) => {
+          promiseQueue.push(this.client.callBuffer('DUMP', key));
+          promiseQueue.push(this.client.callBuffer('PTTL', key));
+        });
+
+        Promise.allSettled(promiseQueue).then((reply) => {
+          for (let i = 0; i < reply.length; i += 2) {
+            if (reply[i].status === 'fulfilled' && reply[i + 1].status === 'fulfilled') {
+              const key = allKeys[i / 2];
+              const keyHex = Buffer.isBuffer(key) ? key.toString('hex') : Buffer.from(key).toString('hex');
+              const valueHex = reply[i].value.toString('hex');
+              const ttl = reply[i + 1].value || 0;
+
+              // 使用RESTORE命令格式，这样可以恢复所有类型的数据
+              const cmd = `RESTORE ${keyHex} ${ttl} ${valueHex} REPLACE`;
+              commands.push(cmd);
+            }
+          }
+
+          // 保存文件
+          const fileName = `Commands_${this.config.connectionName}_${(new Date()).toISOString().substr(0, 10).replaceAll('-', '')}.txt`;
+          this.$util.createAndDownloadFile(fileName, commands.join('\n'));
+          this.$message.success({
+            message: `导出成功！共导出 ${commands.length} 条命令`,
+            duration: 3000,
+          });
+        }).catch((e) => {
+          this.$message.error(`导出失败: ${e.message}`);
+        });
+      });
+    },
   },
 };
 </script>
@@ -470,6 +632,10 @@ export default {
 <style type="text/css">
   .connection-menu-title {
     margin-left: -20px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
   }
 
   .connection-menu .connection-name {

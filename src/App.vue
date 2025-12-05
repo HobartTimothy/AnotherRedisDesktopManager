@@ -12,8 +12,7 @@
           {{ $t('message.preferences') }}
         </div>
         <div class="menu-item" @click="reportBug">
-          <i cl
-             ass="fa fa-bug"></i>
+          <i class="fa fa-bug"></i>
           {{ $t('message.report_bug') }}
         </div>
         <div class="menu-item" @click="openGuide">
@@ -63,7 +62,7 @@
       <div class="nav-header">
         <img v-if="!navCollapsed" src="./assets/applogo.png" class="nav-logo" alt="logo" />
         <div class="nav-toggle-btn" @click="toggleNav" :title="navCollapsed ? 'Expand' : 'Collapse'">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <line :x1="navCollapsed ? 15 : 9" y1="3" :x2="navCollapsed ? 15 : 9" y2="21"></line>
           </svg>
@@ -476,6 +475,10 @@ li .list-index {
 }
 .nav-toggle-btn svg {
   display: block;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  box-sizing: content-box;
 }
 
 .aside-drag-container {

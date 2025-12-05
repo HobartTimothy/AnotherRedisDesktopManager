@@ -36,7 +36,10 @@
           class="ungrouped-connections-wrapper" 
           data-ungrouped="true"
           ref="ungroupedConnectionsWrapper">
-          <div class="ungrouped-connections" ref="ungroupedConnections">
+          <div 
+            class="ungrouped-connections" 
+            ref="ungroupedConnections"
+            data-ungrouped="true">
             <ConnectionWrapper
               v-for="(conn, connIndex) of ungroupedConnections"
               :key="conn.key ? conn.key : conn.connectionName"
@@ -204,20 +207,23 @@ export default {
     initConnections() {
       const connections = storage.getConnections(true);
       const slovedConnections = [];
-      // this.connections = [];
 
+      // 创建全新的对象，确保 Vue 能够追踪到所有属性的变化
       for (const item of connections) {
-        item.connectionName = storage.getConnectionName(item);
+        const newItem = { ...item }; // 创建新对象
+        newItem.connectionName = storage.getConnectionName(newItem);
         // fix history bug, prevent db into config
-        delete item.db;
-        slovedConnections.push(item);
+        delete newItem.db;
+        slovedConnections.push(newItem);
       }
 
+      // 创建新数组，确保响应式系统能够检测到变化
       this.connections = slovedConnections;
       this.groups = storage.getGroups(true);
     },
     getGroupConnections(groupKey) {
-      return this.filteredConnections.filter(conn => conn.groupKey === groupKey);
+      // 规范化 groupKey 比较，处理空字符串和 undefined 的情况
+      return this.filteredConnections.filter(conn => (conn.groupKey || '') === (groupKey || ''));
     },
     showAddGroupDialog() {
       this.newGroupName = '';
@@ -280,7 +286,8 @@ export default {
     },
     handleSortConnections({ groupKey, oldIndex, newIndex }) {
       // Handle connection sorting within/between groups
-      const groupConnections = this.connections.filter(c => c.groupKey === groupKey);
+      // 规范化 groupKey 比较，处理空字符串和 undefined 的情况
+      const groupConnections = this.connections.filter(c => (c.groupKey || '') === (groupKey || ''));
       if (oldIndex !== newIndex && groupConnections.length > 0) {
         this.$storage.reOrderAndStore(this.connections);
       }
@@ -297,16 +304,116 @@ export default {
           chosenClass: 'sortable-chosen',
           dragClass: 'sortable-drag',
           onEnd: (e) => {
-            const { newIndex, oldIndex } = e;
-            if (newIndex !== oldIndex) {
-              const ungrouped = this.connections.filter(c => !c.groupKey);
-              const currentRow = ungrouped.splice(oldIndex, 1)[0];
-              ungrouped.splice(newIndex, 0, currentRow);
-              this.$storage.reOrderAndStore(this.connections);
+            // 检测是否跨容器拖拽
+            const isCrossContainer = e.from !== e.to;
+            
+            if (isCrossContainer) {
+              // 跨容器拖拽：处理连接移动到未分组区域
+              this.handleCrossContainerDragToUngrouped(e);
+            } else {
+              // 同一容器内排序
+              const { newIndex, oldIndex } = e;
+              if (newIndex !== oldIndex) {
+                const ungrouped = this.connections.filter(c => !c.groupKey);
+                const currentRow = ungrouped.splice(oldIndex, 1)[0];
+                ungrouped.splice(newIndex, 0, currentRow);
+                this.$storage.reOrderAndStore(this.connections);
+              }
             }
           },
         });
       }
+    },
+    // 处理跨容器拖拽到未分组区域
+    handleCrossContainerDragToUngrouped(e) {
+      // 从拖拽元素中获取连接的 connectionName
+      const connectionName = this.getConnectionNameFromElement(e.item);
+      if (!connectionName) {
+        return;
+      }
+
+      // 获取源分组的 groupKey（null 表示未分组）
+      const sourceGroupKey = this.getGroupKeyFromContainer(e.from);
+      
+      // 获取目标容器的 groupKey（应该是 null，表示未分组区域）
+      const targetGroupKey = this.getGroupKeyFromContainer(e.to);
+      
+      // 找到连接配置
+      const connection = this.connections.find(c => {
+        const connName = c.connectionName || c.name;
+        return connName === connectionName;
+      });
+
+      if (!connection) {
+        return;
+      }
+
+      // 规范化比较 groupKey，处理 null、undefined 和空字符串
+      const normalizedSourceKey = (sourceGroupKey || '');
+      const normalizedTargetKey = (targetGroupKey || '');
+
+      // 只有当源分组不是未分组，且目标确实是未分组区域时，才更新连接
+      // 如果从未分组拖拽到分组，这个事件不应该被触发，应该由分组的 handleCrossContainerDrag 处理
+      if (normalizedSourceKey !== normalizedTargetKey && normalizedTargetKey === '') {
+        // 使用 storage.moveConnectionToGroup 来移除连接的 groupKey
+        storage.moveConnectionToGroup(connection, '');
+        
+        // 刷新连接列表，立即刷新以确保数量统计正确更新
+        this.initConnections();
+        
+        this.$message.success({
+          message: this.$t('message.modify_success'),
+          duration: 1000,
+        });
+      }
+    },
+    // 从 DOM 元素中获取连接的 connectionName
+    getConnectionNameFromElement(element) {
+      // 查找 connection-anchor-* id
+      const menuElement = element.querySelector('[id^="connection-anchor-"]');
+      if (menuElement && menuElement.id) {
+        const match = menuElement.id.match(/^connection-anchor-(.+)$/);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+      
+      // 如果找不到 id，尝试从 el-submenu 的 index 属性获取
+      const submenu = element.querySelector('.el-submenu');
+      if (submenu && submenu.getAttribute('index')) {
+        return submenu.getAttribute('index');
+      }
+      
+      return null;
+    },
+    // 从容器元素中获取分组的 groupKey
+    getGroupKeyFromContainer(container) {
+      // 如果容器有 data-group-key 属性，直接返回
+      if (container && container.hasAttribute('data-group-key')) {
+        const groupKey = container.getAttribute('data-group-key');
+        return groupKey || null;
+      }
+      
+      // 如果容器是未分组连接的容器（有 data-ungrouped 属性），返回 null
+      if (container && container.hasAttribute('data-ungrouped')) {
+        return null;
+      }
+      
+      // 尝试从父元素中查找 group-key 或 ungrouped
+      if (container) {
+        const ungroupedWrapper = container.closest('[data-ungrouped]');
+        if (ungroupedWrapper) {
+          return null;
+        }
+        
+        const groupElement = container.closest('[data-group-key]');
+        if (groupElement) {
+          const groupKey = groupElement.getAttribute('data-group-key');
+          return groupKey || null;
+        }
+      }
+      
+      return null;
     },
     initGroupsSortable() {
       this.$nextTick(() => {

@@ -523,6 +523,8 @@ export default {
       storage.editConnectionByKey(config, oldKey);
 
       this.dialogVisible = false;
+      // 触发刷新事件，确保连接列表和分组计数实时更新
+      this.$bus.$emit('refreshConnections');
       this.$emit('editConnectionFinished', config);
     },
   },
