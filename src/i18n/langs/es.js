@@ -67,6 +67,8 @@ const es = {
     put_file_here: 'Suelta un fichero aquí o Pincha en Seleccionar',
     config_connections: 'Conexiones',
     import: 'Importar',
+    import_key: 'Importar Key',
+    import_cmd: 'Importar CMD',
     export: 'Exportar',
     open: 'Abrir',
     close: 'Cerrar',

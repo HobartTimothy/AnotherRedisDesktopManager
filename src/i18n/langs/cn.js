@@ -74,6 +74,8 @@ const cn = {
     put_file_here: '将文件拖到此处，或点击选择',
     config_connections: '连接配置',
     import: '导入',
+    import_key: '导入Key',
+    import_cmd: '导入CMD',
     export: '导出',
     open: '打开',
     close: '关闭',

@@ -67,6 +67,8 @@ const fr = {
     put_file_here: 'Glissez le fichier ici ou cliquez sur Sélectionner',
     config_connections: 'Connexions',
     import: 'Importation',
+    import_key: 'Importer Key',
+    import_cmd: 'Importer CMD',
     export: 'Exportation',
     open: 'Ouvrir',
     close: 'Fermer',

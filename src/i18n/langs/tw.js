@@ -67,6 +67,8 @@ const tw = {
     put_file_here: '將檔案拖到此處，或點擊選擇',
     config_connections: '連線設定',
     import: '匯入',
+    import_key: '匯入Key',
+    import_cmd: '匯入CMD',
     export: '匯出',
     open: '打開',
     close: '關閉',

@@ -100,10 +100,10 @@
         <span><i class='more-operate-ico fa fa-exclamation-triangle'></i>&nbsp;{{ $t('message.flushdb') }}</span>
       </el-dropdown-item>
       <el-dropdown-item @click.native='importKeys'>
-        <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import') }} Key</span>
+        <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import_key') }}</span>
       </el-dropdown-item>
       <el-dropdown-item @click.native='execFileCMDS'>
-        <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import') }} CMD</span>
+        <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import_cmd') }}</span>
       </el-dropdown-item>
     </el-dropdown-menu>
   </el-dropdown>

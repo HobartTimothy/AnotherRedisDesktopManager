@@ -67,6 +67,8 @@ const ru = {
     put_file_here: 'Перетащите файлы сюда или нажмите, чтобы выбрать',
     config_connections: 'Настройки подключения',
     import: 'Импорт',
+    import_key: 'Импорт Key',
+    import_cmd: 'Импорт CMD',
     export: 'Экспорт',
     open: 'Открыть',
     close: 'Закрыть',

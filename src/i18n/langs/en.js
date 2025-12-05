@@ -74,6 +74,8 @@ const en = {
     put_file_here: 'Drag File Here Or Click To Select',
     config_connections: 'Connections',
     import: 'Import',
+    import_key: 'Import Key',
+    import_cmd: 'Import CMD',
     export: 'Export',
     open: 'Open',
     close: 'Close',

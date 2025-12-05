@@ -67,6 +67,8 @@ const ua = {
     put_file_here: 'Перетягніть файли сюди або натисніть, щоб вибрати',
     config_connections: 'Налаштування з`єднання',
     import: 'Імпорт',
+    import_key: 'Імпорт Key',
+    import_cmd: 'Імпорт CMD',
     export: 'Експорт',
     open: 'Відкрити',
     close: 'Закрити',

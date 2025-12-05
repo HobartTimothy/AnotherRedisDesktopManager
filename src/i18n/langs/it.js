@@ -67,6 +67,8 @@ const it = {
     put_file_here: 'Trascina il file qui o fai clic per selezionare',
     config_connections: 'Connessioni',
     import: 'Importare',
+    import_key: 'Importa Key',
+    import_cmd: 'Importa CMD',
     export: 'Esportare',
     open: 'Apri',
     close: 'Chiude',

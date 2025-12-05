@@ -67,6 +67,8 @@ const vi = {
     put_file_here: 'Kéo tệp vào đây hoặc nhấp để chọn',
     config_connections: 'Kết nối',
     import: 'Nhập',
+    import_key: 'Nhập Key',
+    import_cmd: 'Nhập CMD',
     export: 'Xuất',
     open: 'Mở',
     close: 'Đóng',

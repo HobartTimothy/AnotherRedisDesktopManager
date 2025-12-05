@@ -67,6 +67,8 @@ const tr = {
     put_file_here: 'Dosyayı Buraya Sürükle veya Seç',
     config_connections: 'Bağlantılar',
     import: 'İçe Aktar',
+    import_key: 'Key İçe Aktar',
+    import_cmd: 'CMD İçe Aktar',
     export: 'Dışa Aktar',
     open: 'Aç',
     close: 'Kapat',

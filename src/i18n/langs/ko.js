@@ -67,6 +67,8 @@ const ko = {
     put_file_here: '파일을 이 곳으로 드래그하거나 클릭하여 선택해주세요',
     config_connections: '연결',
     import: '불러오기',
+    import_key: 'Key 불러오기',
+    import_cmd: 'CMD 불러오기',
     export: '내보내기',
     open: '열기',
     close: '닫기',

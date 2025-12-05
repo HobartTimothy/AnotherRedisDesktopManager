@@ -616,6 +616,12 @@ html .dark-mode {
 }
 
 /* About Dialog */
+.about-dialog {
+  border-radius: 16px !important;
+}
+.about-dialog .el-dialog {
+  border-radius: 16px !important;
+}
 .about-dialog .el-dialog__header {
   display: none;
 }
