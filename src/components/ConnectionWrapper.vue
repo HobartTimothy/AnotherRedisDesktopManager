@@ -228,9 +228,10 @@ export default {
 
       if (!color) {
         ulDom.classList.remove(className);
+        ulDom.style.removeProperty('--menu-color');
       } else {
         ulDom.classList.add(className);
-        this.$el.style.setProperty('--menu-color', color);
+        ulDom.style.setProperty('--menu-color', color);
       }
     },
     scrollToConnection() {
@@ -277,7 +278,7 @@ export default {
   }
 
   .connection-menu.menu-with-custom-color li.el-submenu {
-    border-left: 5px solid var(--menu-color);
+    border-left: 5px solid var(--menu-color, transparent);
     border-radius: 4px 0 0 4px;
     padding-left: 3px;
   }
