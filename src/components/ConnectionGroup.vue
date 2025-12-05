@@ -5,7 +5,7 @@
       class="group-header"
       :style="{ paddingLeft: (12 + (depth - 1) * 16) + 'px' }"
       @click="toggleExpand"
-      @contextmenu.prevent="showContextMenu">
+      @contextmenu.prevent.stop="showContextMenu">
       <img v-if="group.icon" :src="group.icon" class="group-icon-img" />
       <i v-else class="group-icon fa fa-folder" :style="{ color: group.color || '#909399' }"></i>
       <span class="group-name">{{ group.name }}</span>
@@ -203,11 +203,13 @@ export default {
   mounted() {
     document.addEventListener('click', this.handleOutsideContextClick);
     window.addEventListener('scroll', this.hideContextMenu, true);
+    this.$bus.$on('hideAllContextMenus', this.hideContextMenu);
     this.initSortable();
   },
   beforeDestroy() {
     document.removeEventListener('click', this.handleOutsideContextClick);
     window.removeEventListener('scroll', this.hideContextMenu, true);
+    this.$bus.$off('hideAllContextMenus', this.hideContextMenu);
   },
   computed: {
     childGroups() {
@@ -314,6 +316,9 @@ export default {
       });
     },
     showContextMenu(e) {
+      // 关闭其他所有右键菜单
+      this.$bus.$emit('hideAllContextMenus');
+      
       const menuWidth = 200;
       const menuHeight = 240;
       const maxX = window.innerWidth - menuWidth - 8;

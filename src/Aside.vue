@@ -61,11 +61,13 @@ export default {
     document.addEventListener('click', this.hideContextMenu);
     this.$bus.$on('refreshConnections', this.handleRefreshConnections);
     this.$bus.$on('showNewConnectionWithGroup', this.handleShowNewConnectionWithGroup);
+    this.$bus.$on('hideAllContextMenus', this.hideContextMenu);
   },
   beforeDestroy() {
     document.removeEventListener('click', this.hideContextMenu);
     this.$bus.$off('refreshConnections', this.handleRefreshConnections);
     this.$bus.$off('showNewConnectionWithGroup', this.handleShowNewConnectionWithGroup);
+    this.$bus.$off('hideAllContextMenus', this.hideContextMenu);
   },
   methods: {
     handleRefreshConnections() {
@@ -75,6 +77,10 @@ export default {
       this.$refs.newConnectionDialog.showWithGroup(groupKey);
     },
     showContextMenu(e) {
+      // 如果点击在分组上，不显示此菜单（分组有自己的菜单）
+      if (e.target.closest && e.target.closest('.connection-group')) {
+        return;
+      }
       this.menuX = e.clientX;
       this.menuY = e.clientY;
       this.contextMenuVisible = true;

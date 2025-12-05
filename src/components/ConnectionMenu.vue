@@ -1,5 +1,5 @@
 <template>
-<div class="connection-menu-title" @contextmenu.prevent.stop="showContextMenu">
+<div class="connection-menu-title" @contextmenu.prevent.stop="showContextMenu" @click.stop="handleTitleClick">
   <el-dropdown
     ref="connectionDropdown"
     class='connection-menu-more connection-context-menu'
@@ -132,21 +132,42 @@ export default {
 
       this.showEditConnection();
     });
+    this.$bus.$on('hideAllContextMenus', () => {
+      this.connectionMenuVisible = false;
+    });
     document.addEventListener('click', this.hideContextMenu);
   },
   beforeDestroy() {
+    this.$bus.$off('hideAllContextMenus');
     document.removeEventListener('click', this.hideContextMenu);
   },
   methods: {
+    handleTitleClick(e) {
+      // 如果点击的是下拉菜单内部，不触发展开/折叠
+      if (e.target.closest('.connection-menu-more-ul')) {
+        return;
+      }
+      // 触发父级 el-submenu 的点击事件来展开/折叠连接
+      const submenuEl = this.$el.closest('.el-submenu');
+      if (submenuEl) {
+        const titleEl = submenuEl.querySelector('.el-submenu__title');
+        if (titleEl) {
+          titleEl.click();
+        }
+      }
+    },
     showContextMenu(e) {
       if (e) {
         e.preventDefault();
         e.stopPropagation();
       }
+      // 关闭其他所有右键菜单
+      this.$bus.$emit('hideAllContextMenus');
       // Show this menu
       this.connectionMenuVisible = true;
       this.$nextTick(() => {
         if (this.$refs.connectionDropdown) {
+          // Update popper position
           if (this.$refs.connectionDropdown.updatePopper) {
             this.$refs.connectionDropdown.updatePopper();
           }
@@ -636,6 +657,7 @@ export default {
     height: 100%;
     display: flex;
     align-items: center;
+    cursor: pointer;
   }
 
   .connection-menu .connection-name {
@@ -714,6 +736,9 @@ export default {
   /*fix more operation btn icon vertical-center*/
   .connection-menu-more {
     vertical-align: baseline;
+  }
+  .connection-context-menu .el-dropdown-menu {
+    z-index: 9999 !important;
   }
   /*more operation ul>ico*/
   .connection-menu-more-ul .more-operate-ico {

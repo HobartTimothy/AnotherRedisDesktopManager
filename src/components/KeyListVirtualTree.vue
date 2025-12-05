@@ -585,18 +585,18 @@ export default {
   left: 0;
   z-index: 99999;
   overflow: hidden;
-  min-width: 180px;
-  padding: 6px;
-  border-radius: 12px;
+  min-width: 120px;
+  padding: 4px;
+  border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 251, 0.95));
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(8px);
 }
 .dark-mode .key-list-right-menu {
   background: linear-gradient(145deg, rgba(23, 32, 42, 0.96), rgba(16, 24, 40, 0.94));
   border-color: rgba(148, 163, 184, 0.25);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .key-list-right-menu ul {
@@ -612,11 +612,11 @@ export default {
 }
 
 .key-list-right-menu ul li {
-  font-size: 13px;
-  padding: 9px 12px;
+  font-size: 12px;
+  padding: 6px 10px;
   cursor: pointer;
   color: #1f2937;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 .dark-mode .key-list-right-menu ul li {

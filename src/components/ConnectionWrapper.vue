@@ -6,7 +6,7 @@
     @open="openConnection()"
     class="connection-menu"
     active-text-color="#ffd04b">
-    <el-submenu :index="config.connectionName" @contextmenu.native.prevent.stop="handleSubmenuContextMenu">
+    <el-submenu :index="config.connectionName">
       <!-- connection menu -->
       <ConnectionMenu
         slot="title"
