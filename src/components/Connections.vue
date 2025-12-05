@@ -12,36 +12,41 @@
     </div>
 
     <!-- connections list -->
-    <div class="connections-list">
-      <!-- Grouped connections (only root groups) -->
-      <ConnectionGroup
-        v-for="group in rootGroups"
-        :key="group.key"
-        :group="group"
-        :connections="getGroupConnections(group.key)"
-        :allConnections="filteredConnections"
-        :allGroups="groups"
-        :globalSettings="globalSettings"
-        :depth="1"
-        @refresh="initConnections"
-        @sortConnections="handleSortConnections">
-      </ConnectionGroup>
-
-      <!-- Ungrouped connections -->
-      <div class="ungrouped-connections" ref="ungroupedConnections">
-        <div v-if="ungroupedConnections.length > 0 && groups.length > 0" class="ungrouped-header">
-          <i class="fa fa-folder-o"></i>
-          <span>{{ $t('message.ungrouped') }}</span>
-          <span class="ungrouped-count">({{ ungroupedConnections.length }})</span>
-        </div>
-        <ConnectionWrapper
-          v-for="item, index of ungroupedConnections"
-          :key="item.key ? item.key : item.connectionName"
-          :index="index"
+    <div class="connections-list" ref="connectionsList">
+      <!-- 混合排序：分组和未分组连接 -->
+      <template v-for="(item, index) in sortedItems">
+        <!-- 分组 -->
+        <ConnectionGroup
+          v-if="item.type === 'group'"
+          :key="item.group.key"
+          :group="item.group"
+          :connections="getGroupConnections(item.group.key)"
+          :allConnections="filteredConnections"
+          :allGroups="groups"
           :globalSettings="globalSettings"
-          :config='item'>
-        </ConnectionWrapper>
-      </div>
+          :depth="1"
+          @refresh="initConnections"
+          @sortConnections="handleSortConnections">
+        </ConnectionGroup>
+
+        <!-- 未分组连接 - 直接与分组并列显示 -->
+        <div 
+          v-else-if="item.type === 'ungrouped' && ungroupedConnections.length > 0"
+          :key="'ungrouped'"
+          class="ungrouped-connections-wrapper" 
+          data-ungrouped="true"
+          ref="ungroupedConnectionsWrapper">
+          <div class="ungrouped-connections" ref="ungroupedConnections">
+            <ConnectionWrapper
+              v-for="(conn, connIndex) of ungroupedConnections"
+              :key="conn.key ? conn.key : conn.connectionName"
+              :index="connIndex"
+              :globalSettings="globalSettings"
+              :config='conn'>
+            </ConnectionWrapper>
+          </div>
+        </div>
+      </template>
     </div>
 
     <ScrollToTop parentNum='1' :posRight='false'></ScrollToTop>
@@ -138,11 +143,55 @@ export default {
     },
     rootGroups() {
       // Only show top-level groups (no parentKey)
-      return this.groups.filter(g => !g.parentKey);
+      const groups = this.groups.filter(g => !g.parentKey);
+      // Sort groups by order
+      groups.sort((a, b) => {
+        const aOrder = !isNaN(a.order) ? parseInt(a.order) : 999;
+        const bOrder = !isNaN(b.order) ? parseInt(b.order) : 999;
+        return aOrder - bOrder;
+      });
+      return groups;
     },
     ungroupedConnections() {
       const filtered = this.filteredConnections.filter(conn => !conn.groupKey);
       return filtered;
+    },
+    // 获取未分组连接的位置
+    ungroupedPosition() {
+      const saved = localStorage.getItem('ungroupedConnectionsPosition');
+      return saved !== null ? parseInt(saved) : -1;
+    },
+    // 混合排序的列表：分组和未分组连接的混合
+    sortedItems() {
+      const items = [];
+      const groups = [...this.rootGroups];
+      const ungroupedPos = this.ungroupedPosition;
+      const hasUngrouped = this.ungroupedConnections.length > 0;
+      
+      // 如果未分组连接有明确位置且有效
+      if (hasUngrouped && ungroupedPos >= 0 && ungroupedPos <= groups.length) {
+        // 在指定位置插入未分组连接
+        groups.forEach((group, index) => {
+          if (index === ungroupedPos) {
+            items.push({ type: 'ungrouped' });
+          }
+          items.push({ type: 'group', group });
+        });
+        // 如果位置在最后
+        if (ungroupedPos === groups.length) {
+          items.push({ type: 'ungrouped' });
+        }
+      } else {
+        // 默认：分组在前，未分组在后
+        groups.forEach(group => {
+          items.push({ type: 'group', group });
+        });
+        if (hasUngrouped) {
+          items.push({ type: 'ungrouped' });
+        }
+      }
+      
+      return items;
     },
   },
   methods: {
@@ -244,6 +293,9 @@ export default {
           animation: 400,
           direction: 'vertical',
           group: 'connections',
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
           onEnd: (e) => {
             const { newIndex, oldIndex } = e;
             if (newIndex !== oldIndex) {
@@ -256,11 +308,90 @@ export default {
         });
       }
     },
+    initGroupsSortable() {
+      this.$nextTick(() => {
+        const connectionsList = this.$refs.connectionsList;
+        if (!connectionsList) return;
+        
+        // 如果没有分组且没有未分组连接，则不需要排序
+        if (this.rootGroups.length === 0 && this.ungroupedConnections.length === 0) return;
+
+        // 创建排序，支持分组和未分组连接的混合排序
+        Sortable.create(connectionsList, {
+          handle: '.group-header',
+          animation: 400,
+          direction: 'vertical',
+          filter: '.group-content, .ungrouped-connections',
+          preventOnFilter: true,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
+          draggable: '.connection-group, .ungrouped-connections-wrapper',
+          onEnd: (e) => {
+            if (e.oldIndex === e.newIndex) return;
+            
+            const isGroup = e.item.classList.contains('connection-group');
+            const isUngrouped = e.item.classList.contains('ungrouped-connections-wrapper');
+            
+            if (!isGroup && !isUngrouped) return;
+
+            // 获取当前所有元素（分组和未分组连接容器）
+            const allElements = Array.from(connectionsList.children);
+            const sortedItems = [];
+            let ungroupedIndex = -1;
+
+            // 收集所有元素的位置信息
+            allElements.forEach((el, index) => {
+              if (el.classList.contains('connection-group')) {
+                const groupKey = el.getAttribute('data-group-key');
+                if (groupKey) {
+                  const group = this.rootGroups.find(g => g.key === groupKey);
+                  if (group) {
+                    sortedItems.push({ type: 'group', key: groupKey, index, group });
+                  }
+                }
+              } else if (el.classList.contains('ungrouped-connections-wrapper')) {
+                ungroupedIndex = index;
+                sortedItems.push({ type: 'ungrouped', index });
+              }
+            });
+
+            // 更新分组和未分组连接的位置
+            // 重新计算每个元素的order，排除未分组连接后的相对位置
+            let groupIndex = 0;
+            sortedItems.forEach((item) => {
+              if (item.type === 'group') {
+                item.group.order = groupIndex;
+                groupIndex++;
+              } else if (item.type === 'ungrouped') {
+                // 未分组连接的位置：在groupIndex位置插入
+                localStorage.setItem('ungroupedConnectionsPosition', groupIndex);
+              }
+            });
+
+            // 保存所有分组的新排序
+            const groupsToSave = sortedItems
+              .filter(item => item.type === 'group')
+              .map(item => item.group);
+            
+            if (groupsToSave.length > 0) {
+              this.$storage.reOrderGroups(groupsToSave);
+            } else if (ungroupedIndex >= 0) {
+              // 如果没有分组，只保存未分组连接的位置
+              localStorage.setItem('ungroupedConnectionsPosition', 0);
+            }
+            
+            this.initConnections();
+          },
+        });
+      });
+    },
   },
   mounted() {
     this.initConnections();
     this.$nextTick(() => {
       this.initUngroupedSortable();
+      this.initGroupsSortable();
     });
   },
 };
@@ -278,20 +409,92 @@ export default {
   .connections-wrap .connections-list {
     min-height: calc(100vh - 110px);
   }
-  .connections-wrap .ungrouped-header {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    color: #909399;
-    font-size: 13px;
-    user-select: none;
+  .connections-wrap .ungrouped-connections {
+    margin-bottom: 8px;
   }
-  .connections-wrap .ungrouped-header i {
-    margin-right: 8px;
+
+  /* 未分组连接包装器样式 */
+  .ungrouped-connections-wrapper {
+    margin-bottom: 6px;
+    position: relative;
   }
-  .connections-wrap .ungrouped-count {
-    margin-left: 4px;
-    font-size: 12px;
+
+  /* 未分组连接列表 - 直接与分组并列显示，与分组内的连接项对齐 */
+  .ungrouped-connections {
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .ungrouped-connections .connection-menu {
+    margin-left: 0;
+  }
+
+  /* 使未分组连接项对齐到分组标题的位置
+     分组标题（depth=1）位置计算：
+     - paddingLeft: 12px
+     - 图标宽度: 20px
+     - 图标右边距: 10px
+     - 文字开始位置: 12px + 20px + 10px = 42px
+     
+     未分组连接项要对齐到分组标题：
+     - connection-name padding-left: 4px
+     - 图标宽度: 20px
+     - gap: 10px（与分组标题图标右边距一致）
+     - 文字开始位置 = el-submenu__title padding-left + 4px + 20px + 10px = 42px
+     - 所以 el-submenu__title padding-left = 42 - 4 - 20 - 10 = 8px
+     - 但为了让图标开始位置也对齐（12px），需要 padding-left = 12px - 4px = 8px
+     实际上，padding-left = 12px 时，图标开始位置 = 12px + 4px = 16px，不对齐
+     所以 padding-left = 12px - 4px = 8px，这样图标开始位置 = 8px + 4px = 12px，文字开始位置 = 8px + 4px + 20px + 10px = 42px */
+  .ungrouped-connections .connection-menu .connection-menu-title {
+    margin-left: 0 !important;
+  }
+
+  .ungrouped-connections .connection-menu .el-submenu__title {
+    padding-left: 8px !important;
+  }
+
+  /* 拖拽排序样式 - 适用于分组和未分组连接 */
+  .sortable-ghost {
+    opacity: 0.4;
+    background: rgba(148, 163, 184, 0.1) !important;
+    border-radius: 8px;
+  }
+
+  .dark-mode .sortable-ghost {
+    background: rgba(148, 163, 184, 0.15) !important;
+  }
+
+  .sortable-chosen {
+    cursor: grabbing !important;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+  }
+
+  .dark-mode .sortable-chosen {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .sortable-drag {
+    opacity: 0.8;
+  }
+
+  /* 分组可拖拽样式 */
+  .connections-list .connection-group .group-header {
+    cursor: grab;
+  }
+
+  .connections-list .connection-group .group-header:active {
+    cursor: grabbing;
+  }
+
+  /* 连接项可拖拽样式 */
+  .connections-list .connection-menu .el-submenu__title {
+    cursor: grab;
+  }
+
+  .connections-list .connection-menu .el-submenu__title:active {
+    cursor: grabbing;
   }
   .connections-wrap .icon-upload-area {
     display: flex;

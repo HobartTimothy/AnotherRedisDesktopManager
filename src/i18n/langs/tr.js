@@ -242,6 +242,14 @@ const tr = {
     import_data: 'Veri İçe Aktar',
     import_data_warning: 'İçe aktarma mevcut tüm yapılandırmaların üzerine yazacaktır. Önce bir yedek dışa aktarmanız önerilir',
     save_config: 'Yapılandırmayı Kaydet',
+    connect_success: 'Bağlantı başarılı',
+    connect_fail: 'Bağlantı başarısız',
+    client_error: 'İstemci hatası',
+    client_error_connection_refused: 'Bağlantı reddedildi, lütfen yapılandırmanın doğru olup olmadığını kontrol edin',
+    client_error_timeout: 'Bağlantı zaman aşımı',
+    client_error_host_not_found: 'Ana bilgisayar bulunamadı',
+    client_error_connection_reset: 'Bağlantı sıfırlandı',
+    client_error_auth_failed: 'Kimlik doğrulama başarısız, lütfen kullanıcı adı ve şifreyi kontrol edin',
   },
 };
 

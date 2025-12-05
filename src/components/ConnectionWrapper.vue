@@ -154,6 +154,31 @@ export default {
         });
       }, this.pingInterval);
     },
+    formatConnectionError(error) {
+      const errorStr = error.toString();
+      const errorMessage = error.message || errorStr;
+      const errorLower = errorMessage.toLowerCase();
+
+      // 检查常见的连接错误类型（不区分大小写）
+      if (errorLower.includes('econnrefused') || errorLower.includes('connection refused')) {
+        return `${this.$t('message.client_error_connection_refused')}: ${errorMessage}`;
+      }
+      if (errorLower.includes('etimedout') || errorLower.includes('timeout')) {
+        return `${this.$t('message.client_error_timeout')}: ${errorMessage}`;
+      }
+      if (errorLower.includes('enotfound') || errorLower.includes('host not found') || errorLower.includes('getaddrinfo')) {
+        return `${this.$t('message.client_error_host_not_found')}: ${errorMessage}`;
+      }
+      if (errorLower.includes('econnreset') || errorLower.includes('connection reset')) {
+        return `${this.$t('message.client_error_connection_reset')}: ${errorMessage}`;
+      }
+      if (errorLower.includes('authentication') || errorLower.includes('password') || errorLower.includes('auth') || errorLower.includes('invalid password')) {
+        return `${this.$t('message.client_error_auth_failed')}: ${errorMessage}`;
+      }
+
+      // 默认错误消息
+      return `${this.$t('message.client_error')}: ${errorMessage}`;
+    },
     getRedisClient(config) {
       // prevent changing back to raw config, such as config.db
       const configCopy = JSON.parse(JSON.stringify(config));
@@ -177,8 +202,9 @@ export default {
         this.client = client;
 
         client.on('error', (error) => {
+          const errorMessage = this.formatConnectionError(error);
           this.$message.error({
-            message: `Client On Error: ${error} Config right?`,
+            message: errorMessage,
             duration: 3000,
             customClass: 'redis-on-error-message',
           });
@@ -186,7 +212,8 @@ export default {
           this.$bus.$emit('closeConnection');
         });
       }).catch((error) => {
-        this.$message.error(error.message);
+        const errorMessage = this.formatConnectionError(error);
+        this.$message.error(errorMessage);
         this.$bus.$emit('closeConnection');
       });
 

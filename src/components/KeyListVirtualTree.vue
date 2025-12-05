@@ -583,40 +583,54 @@ export default {
   position: fixed;
   top: 0;
   left: 0;
-  padding: 0px;
   z-index: 99999;
   overflow: hidden;
-  border-radius: 3px;
-  border: 2px solid lightgrey;
-  background: #fafafa;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 251, 0.95));
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(8px);
 }
 .dark-mode .key-list-right-menu {
-  background: #263238;
+  background: linear-gradient(145deg, rgba(23, 32, 42, 0.96), rgba(16, 24, 40, 0.94));
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
 }
 
 .key-list-right-menu ul {
   list-style: none;
-  padding: 0px;
+  padding: 0;
+  margin: 0;
 }
 .key-list-right-menu ul li:not(:last-child) {
-  border-bottom: 1px solid lightgrey;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+.dark-mode .key-list-right-menu ul li:not(:last-child) {
+  border-bottom-color: rgba(148, 163, 184, 0.16);
 }
 
 .key-list-right-menu ul li {
-  font-size: 13.4px;
-  padding: 6px 10px;
+  font-size: 13px;
+  padding: 9px 12px;
   cursor: pointer;
-  color: #263238;
+  color: #1f2937;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 .dark-mode .key-list-right-menu ul li {
-  color: #fff;
+  color: #e5e7eb;
 }
 
 .key-list-right-menu ul li:hover {
-  background: #e4e2e2;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0f172a;
+  transform: translateX(2px);
 }
 .dark-mode .key-list-right-menu ul li:hover {
-  background: #344A4E;
+  background: rgba(56, 189, 248, 0.14);
+  color: #e5e7eb;
 }
 /* right menu style end */
 </style>

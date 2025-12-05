@@ -1,12 +1,11 @@
 <template>
-  <div class="connection-group">
+  <div class="connection-group" :data-group-key="group.key">
     <!-- Group Header -->
     <div
       class="group-header"
       :style="{ paddingLeft: (12 + (depth - 1) * 16) + 'px' }"
       @click="toggleExpand"
       @contextmenu.prevent="showContextMenu">
-      <i :class="['group-arrow', 'el-icon-arrow-right', { 'is-expanded': isExpanded }]"></i>
       <img v-if="group.icon" :src="group.icon" class="group-icon-img" />
       <i v-else class="group-icon fa fa-folder" :style="{ color: group.color || '#909399' }"></i>
       <span class="group-name">{{ group.name }}</span>
@@ -199,23 +198,28 @@ export default {
     };
   },
   mounted() {
-    document.addEventListener('click', this.hideContextMenu);
+    document.addEventListener('click', this.handleOutsideContextClick);
+    window.addEventListener('scroll', this.hideContextMenu, true);
     this.initSortable();
   },
   beforeDestroy() {
-    document.removeEventListener('click', this.hideContextMenu);
+    document.removeEventListener('click', this.handleOutsideContextClick);
+    window.removeEventListener('scroll', this.hideContextMenu, true);
   },
   computed: {
     childGroups() {
       return this.allGroups.filter(g => g.parentKey === this.group.key);
     },
     totalCount() {
-      // Count connections in this group and all child groups
+      // Count connections in this group and all child groups recursively
       let count = this.connections.length;
       const countRecursive = (parentKey) => {
         const children = this.allGroups.filter(g => g.parentKey === parentKey);
         for (const child of children) {
-          count += this.allConnections.filter(c => c.groupKey === child.key).length;
+          // Count connections directly in this child group
+          const childConnections = this.allConnections.filter(c => c.groupKey === child.key);
+          count += childConnections.length;
+          // Recursively count connections in child's sub-groups
           countRecursive(child.key);
         }
       };
@@ -295,12 +299,22 @@ export default {
       });
     },
     showContextMenu(e) {
-      this.contextMenuX = e.clientX;
-      this.contextMenuY = e.clientY;
+      const menuWidth = 200;
+      const menuHeight = 240;
+      const maxX = window.innerWidth - menuWidth - 8;
+      const maxY = window.innerHeight - menuHeight - 8;
+      this.contextMenuX = Math.max(8, Math.min(e.pageX, maxX));
+      this.contextMenuY = Math.max(8, Math.min(e.pageY, maxY));
       this.contextMenuVisible = true;
     },
     hideContextMenu() {
       this.contextMenuVisible = false;
+    },
+    handleOutsideContextClick(event) {
+      if (!this.contextMenuVisible) return;
+      const menu = this.$el.querySelector('.group-context-menu');
+      if (menu && menu.contains(event.target)) return;
+      this.hideContextMenu();
     },
     editGroup() {
       this.editGroupName = this.group.name;
@@ -385,6 +399,9 @@ export default {
             animation: 400,
             direction: 'vertical',
             group: 'connections',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
             onEnd: (e) => {
               this.$emit('sortConnections', {
                 groupKey: this.group.key,
@@ -404,69 +421,128 @@ export default {
 
 <style scoped>
 .connection-group {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  position: relative;
 }
 
 .group-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 10px 14px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   user-select: none;
+  white-space: nowrap;
+  margin: 2px 0;
+  position: relative;
 }
 
 .group-header:hover {
-  background: #f0f2f5;
+  background: rgba(148, 163, 184, 0.1);
+  transform: translateX(2px);
 }
 
 .dark-mode .group-header:hover {
-  background: #3a4a54;
+  background: rgba(148, 163, 184, 0.15);
 }
 
-.group-arrow {
-  transition: transform 0.2s;
-  margin-right: 6px;
-  font-size: 12px;
-}
-
-.group-arrow.is-expanded {
-  transform: rotate(90deg);
-}
 
 .group-icon {
-  margin-right: 8px;
-  font-size: 14px;
+  margin-right: 10px;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .group-icon-img {
-  width: 18px;
-  height: 18px;
-  margin-right: 8px;
-  border-radius: 3px;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  border-radius: 4px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .group-name {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 14px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #1e293b;
+}
+
+.dark-mode .group-name {
+  color: #e5e7eb;
 }
 
 .group-count {
-  color: #909399;
+  color: #94a3b8;
   font-size: 12px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.dark-mode .group-count {
+  color: #64748b;
 }
 
 .group-connections {
-  margin-left: 10px;
-  padding-left: 8px;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 .group-content {
-  border-left: 2px solid #e4e7ed;
-  margin-left: 18px;
+  border-left: 2px solid rgba(148, 163, 184, 0.2);
+  margin-left: 28px;
+  padding-left: 8px;
+  transition: border-color 0.2s ease;
+}
+
+.group-content:hover {
+  border-left-color: rgba(148, 163, 184, 0.4);
+}
+
+.dark-mode .group-content {
+  border-left-color: rgba(148, 163, 184, 0.15);
+}
+
+.dark-mode .group-content:hover {
+  border-left-color: rgba(148, 163, 184, 0.3);
+}
+
+.group-content .group-connections ::v-deep .connection-menu {
+  margin-left: 0;
+}
+
+/* 对齐连接项文字到分组标题文字位置
+   分组标题（depth=1，无箭头）文字开始位置（从容器左边缘）：
+     paddingLeft(12px) + 图标宽度(20px) + 图标右边距(10px) = 42px
+   
+   分组内容起始位置（从容器左边缘）：
+     margin-left(28px) + border(2px) + padding-left(8px) = 38px
+   
+   连接项文字位置计算（从容器左边缘）：
+     - group-content 起始: 38px
+     - el-submenu__title padding-left: 14px
+     - connection-menu-title margin-left: 0（已重置）
+     - connection-name padding-left: 4px
+     - 图标宽度: 20px
+     - gap: 10px
+     - 文字开始位置: 38px + 14px + 4px + 20px + 10px = 86px
+   
+   但我们要让连接项文字对齐到分组标题文字（42px），这不太合理，因为分组内的连接项应该有缩进。
+   所以这里让连接项文字对齐到分组标题文字位置是不对的，应该让它们与分组标题有视觉上的层级关系。
+   当前设置（padding-left: 14px）保持了连接项在分组内容内的缩进效果。
+*/
+.group-content .group-connections ::v-deep .connection-menu-title {
+  margin-left: 0 !important;
+}
+
+.group-content .group-connections ::v-deep .connection-menu .el-submenu__title {
+  padding-left: 14px !important;
 }
 
 .dark-mode .group-content {

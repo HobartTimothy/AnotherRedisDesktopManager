@@ -1,129 +1,113 @@
 <template>
-<div class="connection-menu-title">
-  <div class="connection-opt-icons">
-    <!-- right menu operate icons -->
-    <i :title="$t('message.redis_status')"
-      class="connection-right-icon fa fa-home"
-      :style="{ color: client ? '#7cad7c' : ''}"
-      @click.stop.prevent="openStatus">
-    </i>
-    <i :title="$t('message.redis_console')"
-      class="connection-right-icon fa fa-terminal font-weight-bold"
-      @click.stop.prevent="openCli">
-    </i>
-    <i :title="$t('message.refresh_connection')"
-      class='connection-right-icon el-icon-refresh font-weight-bold'
-      @click.stop.prevent="refreshConnection">
-    </i>
-
-    <!-- more operate menu -->
-    <el-dropdown
-      class='connection-menu-more'
-      placement='bottom-start'
-      :show-timeout=100
-      :hide-timeout=300>
-      <i class="connection-right-icon el-icon-menu" @click.stop></i>
-      <el-dropdown-menu class='connection-menu-more-ul' slot="dropdown">
-
-        <!-- move to group submenu -->
-        <el-dropdown-item>
-          <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
-            <div slot="reference" class="move-to-group-trigger">
-              <span><i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}</span>
-              <i class="el-icon-arrow-right"></i>
+<div class="connection-menu-title" @contextmenu.prevent.stop="showContextMenu">
+  <el-dropdown
+    ref="connectionDropdown"
+    class='connection-menu-more connection-context-menu'
+    trigger="manual"
+    placement='bottom-start'
+    :visible.sync="connectionMenuVisible"
+    :show-timeout="0"
+    :hide-timeout="150">
+    <div :title="connectionTitle()" class="connection-name">
+      <img v-if="config.icon" :src="config.icon" class="connection-icon-img" />
+      <i v-else class="connection-icon fa fa-database" :style="{ color: config.markColor || '#dc382d' }"></i>
+      {{config.connectionName}}
+    </div>
+    <el-dropdown-menu class='connection-menu-more-ul' slot="dropdown">
+      <!-- move to group submenu -->
+      <el-dropdown-item>
+        <el-popover placement="right" trigger="hover" :visible-arrow="false" popper-class="move-to-group-popover">
+          <div slot="reference" class="move-to-group-trigger">
+            <span><i class='more-operate-ico fa fa-folder-open-o'></i>&nbsp;{{ $t('message.move_to_group') }}</span>
+            <i class="el-icon-arrow-right"></i>
+          </div>
+          <div class="group-list">
+            <!-- Ungrouped option -->
+            <div class="group-item" @click="moveToGroup('')" v-if="config.groupKey">
+              <i class="fa fa-folder-o"></i>&nbsp;{{ $t('message.ungrouped') }}
             </div>
-            <div class="group-list">
-              <!-- Ungrouped option -->
-              <div class="group-item" @click="moveToGroup('')" v-if="config.groupKey">
-                <i class="fa fa-folder-o"></i>&nbsp;{{ $t('message.ungrouped') }}
+            <!-- Root groups with nested children -->
+            <template v-for="group in rootGroups">
+              <div
+                :key="group.key"
+                class="group-item level-1"
+                :class="{ 'is-current': config.groupKey === group.key }"
+                @click="moveToGroup(group.key)">
+                <i class="fa fa-folder" :style="{ color: group.color }"></i>&nbsp;{{ group.name }}
               </div>
-              <!-- Root groups with nested children -->
-              <template v-for="group in rootGroups">
+              <!-- Level 2 children -->
+              <template v-for="child2 in getChildGroups(group.key)">
                 <div
-                  :key="group.key"
-                  class="group-item level-1"
-                  :class="{ 'is-current': config.groupKey === group.key }"
-                  @click="moveToGroup(group.key)">
-                  <i class="fa fa-folder" :style="{ color: group.color }"></i>&nbsp;{{ group.name }}
+                  :key="child2.key"
+                  class="group-item level-2"
+                  :class="{ 'is-current': config.groupKey === child2.key }"
+                  @click="moveToGroup(child2.key)">
+                  <i class="fa fa-folder" :style="{ color: child2.color }"></i>&nbsp;{{ child2.name }}
                 </div>
-                <!-- Level 2 children -->
-                <template v-for="child2 in getChildGroups(group.key)">
-                  <div
-                    :key="child2.key"
-                    class="group-item level-2"
-                    :class="{ 'is-current': config.groupKey === child2.key }"
-                    @click="moveToGroup(child2.key)">
-                    <i class="fa fa-folder" :style="{ color: child2.color }"></i>&nbsp;{{ child2.name }}
-                  </div>
-                  <!-- Level 3 children -->
-                  <div
-                    v-for="child3 in getChildGroups(child2.key)"
-                    :key="child3.key"
-                    class="group-item level-3"
-                    :class="{ 'is-current': config.groupKey === child3.key }"
-                    @click="moveToGroup(child3.key)">
-                    <i class="fa fa-folder" :style="{ color: child3.color }"></i>&nbsp;{{ child3.name }}
-                  </div>
-                </template>
+                <!-- Level 3 children -->
+                <div
+                  v-for="child3 in getChildGroups(child2.key)"
+                  :key="child3.key"
+                  class="group-item level-3"
+                  :class="{ 'is-current': config.groupKey === child3.key }"
+                  @click="moveToGroup(child3.key)">
+                  <i class="fa fa-folder" :style="{ color: child3.color }"></i>&nbsp;{{ child3.name }}
+                </div>
               </template>
-              <div v-if="groups.length === 0" class="no-groups">
-                {{ $t('message.no_groups') }}
-              </div>
+            </template>
+            <div v-if="groups.length === 0" class="no-groups">
+              {{ $t('message.no_groups') }}
             </div>
-          </el-popover>
-        </el-dropdown-item>
+          </div>
+        </el-popover>
+      </el-dropdown-item>
 
-        <el-dropdown-item @click.native='closeConnection' divided>
-          <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='showEditConnection'>
-          <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='deleteConnection'>
-          <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='duplicateConnection'>
-          <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
-        </el-dropdown-item>
+      <el-dropdown-item @click.native='closeConnection' divided>
+        <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='showEditConnection'>
+        <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='deleteConnection'>
+        <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='duplicateConnection'>
+        <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
+      </el-dropdown-item>
 
-        <!-- menu color picker -->
-        <el-tooltip placement="right" effect="light">
-          <el-color-picker
-            slot='content'
-            v-model="menuColor"
-            @change='changeColor'
-            :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff']">
-          </el-color-picker>
+      <el-dropdown-item @click.native='memoryAnalisys' divided>
+        <span><i class='more-operate-ico fa fa-table'></i>&nbsp;{{ $t('message.memory_analysis') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='slowLog'>
+        <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
+      </el-dropdown-item>
 
-          <el-dropdown-item divided>
-            <span><i class='more-operate-ico fa fa-bookmark-o'></i>&nbsp;{{ $t('message.mark_color') }}</span>
-          </el-dropdown-item>
-        </el-tooltip>
+      <!-- menu color picker -->
+      <el-tooltip placement="right" effect="light">
+        <el-color-picker
+          slot='content'
+          v-model="menuColor"
+          @change='changeColor'
+          :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff']">
+        </el-color-picker>
 
-        <el-dropdown-item @click.native='memoryAnalisys'>
-          <span><i class='more-operate-ico fa fa-table'></i>&nbsp;{{ $t('message.memory_analysis') }}</span>
+        <el-dropdown-item divided>
+          <span><i class='more-operate-ico fa fa-bookmark-o'></i>&nbsp;{{ $t('message.mark_color') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='slowLog'>
-          <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='importKeys' divided>
-          <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import') }} Key</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='execFileCMDS'>
-          <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import') }} CMD</span>
-        </el-dropdown-item>
-        <el-dropdown-item @click.native='flushDB'>
-          <span><i class='more-operate-ico fa fa-exclamation-triangle'></i>&nbsp;{{ $t('message.flushdb') }}</span>
-        </el-dropdown-item>
+      </el-tooltip>
 
-      </el-dropdown-menu>
-    </el-dropdown>
-  </div>
-  <div :title="connectionTitle()" class="connection-name">{{config.connectionName}}
-    <!-- <i v-if="client" style="position: absolute; left: 2px; bottom: 5px; width: 8px; height: 8px; border-radius: 4px; background-color: green;"></i> -->
-  </div>
+      <el-dropdown-item @click.native='flushDB' divided>
+        <span><i class='more-operate-ico fa fa-exclamation-triangle'></i>&nbsp;{{ $t('message.flushdb') }}</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='importKeys'>
+        <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import') }} Key</span>
+      </el-dropdown-item>
+      <el-dropdown-item @click.native='execFileCMDS'>
+        <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import') }} CMD</span>
+      </el-dropdown-item>
+    </el-dropdown-menu>
+  </el-dropdown>
 
-  <!-- edit connection dialog -->
   <NewConnectionDialog
     editMode='true'
     :config='config'
@@ -144,6 +128,7 @@ export default {
     return {
       menuColor: '#409EFF',
       groups: [],
+      connectionMenuVisible: false,
     };
   },
   props: ['config', 'client'],
@@ -163,8 +148,21 @@ export default {
 
       this.showEditConnection();
     });
+    document.addEventListener('click', this.hideContextMenu);
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.hideContextMenu);
   },
   methods: {
+    showContextMenu() {
+      this.connectionMenuVisible = true;
+      this.$nextTick(() => {
+        this.$refs.connectionDropdown && this.$refs.connectionDropdown.updatePopper && this.$refs.connectionDropdown.updatePopper();
+      });
+    },
+    hideContextMenu() {
+      this.connectionMenuVisible = false;
+    },
     connectionTitle() {
       const { config } = this;
       const sep = '-----------';
@@ -475,38 +473,76 @@ export default {
   }
 
   .connection-menu .connection-name {
-    margin-right: 115px;
-    padding-right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
     word-break: keep-all;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: bold;
-    font-size: 1.04em;
+    font-weight: 700;
+    font-size: 1.05em;
+    border-radius: 8px;
+    cursor: context-menu;
+    background: transparent;
+    box-shadow: none;
   }
-  .connection-menu .connection-opt-icons {
-    /*width: 30px;*/
-    /*float: right;
-    margin-right: 28px;*/
-    position: absolute;
-    right: 25px;
-    top: -2px;
+  .connection-icon {
+    font-size: 16px;
+    flex-shrink: 0;
   }
-  .connection-menu .connection-right-icon {
-    display: inline-block;
-    font-size: 1.16em;
-    /*font-weight: bold;*/
-    padding: 3px;
-    margin-right: -4px;
-    transition: background 0.2s;
+  .connection-icon-img {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
   }
-  .connection-menu .connection-right-icon:hover {
-    /*color: #85878a;*/
-    background: #dcdee0;
-    border-radius: 3px;
+  /* remove default hover tint to avoid double highlight */
+  .connection-menu .connection-name:hover {
+    background: transparent;
+    box-shadow: none;
   }
-  .dark-mode .connection-menu .connection-right-icon:hover {
-    background: #58707b;
+  .connection-menu .el-submenu__title {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px !important;
+    height: auto;
+    line-height: 1.4;
+    min-height: 32px;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+  /* active/selected state - 移除选中状态的背景色 */
+  .connection-menu .el-submenu.is-opened > .el-submenu__title,
+  .connection-menu .el-submenu.is-active > .el-submenu__title {
+    background: transparent !important;
+    color: var(--app-ink);
+  }
+  .dark-mode .connection-menu .el-submenu.is-opened > .el-submenu__title,
+  .dark-mode .connection-menu .el-submenu.is-active > .el-submenu__title {
+    background: transparent !important;
+    color: #e5e7eb;
+  }
+  /* 选中状态下hover保持透明 */
+  .connection-menu .el-submenu.is-opened > .el-submenu__title:hover,
+  .connection-menu .el-submenu.is-active > .el-submenu__title:hover {
+    background: transparent !important;
+  }
+  .dark-mode .connection-menu .el-submenu.is-opened > .el-submenu__title:hover,
+  .dark-mode .connection-menu .el-submenu.is-active > .el-submenu__title:hover {
+    background: transparent !important;
+  }
+  /* 未选中状态的hover */
+  .connection-menu .el-submenu:not(.is-opened):not(.is-active) > .el-submenu__title:hover {
+    background: rgba(148, 163, 184, 0.1) !important;
+  }
+  .dark-mode .connection-menu .el-submenu:not(.is-opened):not(.is-active) > .el-submenu__title:hover {
+    background: rgba(148, 163, 184, 0.15) !important;
+  }
+  .connection-menu .el-submenu__title:focus {
+    background: transparent !important;
   }
 
   /*fix more operation btn icon vertical-center*/

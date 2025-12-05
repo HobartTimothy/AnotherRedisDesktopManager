@@ -170,6 +170,9 @@ export default {
       this.selectedDbIndex = db;
     },
     initDatabaseSelect() {
+      if (!this.client) {
+        return;
+      }
       this.client.config('get', 'databases').then((reply) => {
         this.dbs = [...Array(parseInt(reply[1])).keys()];
         this.getDatabasesFromInfo();
@@ -181,8 +184,11 @@ export default {
       });
     },
     initCustomDbName() {
+      if (!this.config) {
+        return;
+      }
       // First, try to load from connection config's dbAliases
-      if (this.config && this.config.dbAliases && this.config.dbAliases.length > 0) {
+      if (this.config.dbAliases && this.config.dbAliases.length > 0) {
         const aliasMap = {};
         this.config.dbAliases.forEach(alias => {
           if (alias.name) {
@@ -193,11 +199,19 @@ export default {
       }
       
       // Then, merge with localStorage custom names (localStorage takes precedence for backward compatibility)
-      const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
-      const customNames = JSON.parse(localStorage.getItem(dbKey));
-
-      if (customNames) {
-        this.dbNames = { ...this.dbNames, ...customNames };
+      if (this.config.connectionName) {
+        const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
+        const storedValue = localStorage.getItem(dbKey);
+        if (storedValue) {
+          try {
+            const customNames = JSON.parse(storedValue);
+            if (customNames) {
+              this.dbNames = { ...this.dbNames, ...customNames };
+            }
+          } catch (e) {
+            // Invalid JSON, ignore
+          }
+        }
       }
     },
     getDbLabel(index) {
@@ -239,6 +253,9 @@ export default {
       this.searchExact = false;
     },
     changeDb(dbIndex = false) {
+      if (!this.client) {
+        return;
+      }
       if (dbIndex !== false) {
         this.selectedDbIndex = parseInt(dbIndex);
       }
@@ -248,9 +265,11 @@ export default {
         // clear the search input
           this.searchMatch = '';
           this.$parent.$parent.$parent.$refs.keyList.refreshKeyList();
-          const dbKey = this.$storage.getStorageKeyByName('last_db', this.config.connectionName);
-          // store the last selected db
-          localStorage.setItem(dbKey, this.selectedDbIndex);
+          if (this.config && this.config.connectionName) {
+            const dbKey = this.$storage.getStorageKeyByName('last_db', this.config.connectionName);
+            // store the last selected db
+            localStorage.setItem(dbKey, this.selectedDbIndex);
+          }
           // tell cli to change db
           this.client.options.db = this.selectedDbIndex;
           this.$bus.$emit('changeDb', this.client, this.selectedDbIndex);
@@ -271,8 +290,10 @@ export default {
 
       this.$prompt(this.$t('message.custom_name'), { inputValue: name }).then(({ value }) => {
         this.$set(this.dbNames, db, value);
-        const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
-        localStorage.setItem(dbKey, JSON.stringify(this.dbNames));
+        if (this.config && this.config.connectionName) {
+          const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
+          localStorage.setItem(dbKey, JSON.stringify(this.dbNames));
+        }
       }).catch(() => {});
     },
     filterDbCustomName(query) {
@@ -378,6 +399,9 @@ export default {
       cb(items);
     },
     initHistory() {
+      if (!this.config || !this.config.name) {
+        return;
+      }
       const key = this.$storage.getStorageKeyByName('search_tip', this.config.name);
       const tips = localStorage.getItem(key);
 
@@ -394,6 +418,9 @@ export default {
     storeHistory() {
       // not changed
       if (this.searchHistory.size === this.searchHistoryCount) {
+        return;
+      }
+      if (!this.config || !this.config.name) {
         return;
       }
       const key = this.$storage.getStorageKeyByName('search_tip', this.config.name);

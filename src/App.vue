@@ -12,7 +12,8 @@
           {{ $t('message.preferences') }}
         </div>
         <div class="menu-item" @click="reportBug">
-          <i class="fa fa-bug"></i>
+          <i cl
+             ass="fa fa-bug"></i>
           {{ $t('message.report_bug') }}
         </div>
         <div class="menu-item" @click="openGuide">
@@ -70,16 +71,16 @@
       </div>
 
       <div class="nav-top">
-        <div 
-          class="nav-icon-item" 
+        <div
+          class="nav-icon-item"
           :class="{ active: activeNav === 'server' }"
           @click="switchNav('server')"
           :title="$t('message.my_connections')">
           <i class="fa fa-server"></i>
           <span v-if="!navCollapsed" class="nav-label">{{ $t('message.my_connections') }}</span>
         </div>
-        <div 
-          class="nav-icon-item" 
+        <div
+          class="nav-icon-item"
           :class="{ active: activeNav === 'history' }"
           @click="switchNav('history')"
           :title="$t('message.command_log')">
@@ -88,8 +89,8 @@
         </div>
       </div>
       <div class="nav-bottom">
-        <div 
-          class="nav-icon-item" 
+        <div
+          class="nav-icon-item"
           @click="showSettingsMenu"
           :title="$t('message.settings')">
           <i class="fa fa-cog"></i>
@@ -397,7 +398,8 @@ li .list-index {
   align-items: center;
   padding: 0 12px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
   margin: 2px 0;
   color: var(--app-muted);
   font-size: 14px;
@@ -416,14 +418,23 @@ li .list-index {
   font-size: 13px;
 }
 .nav-icon-bar .nav-icon-item:hover {
-  background: rgba(34, 211, 238, 0.1);
+  background: rgba(148, 163, 184, 0.14);
   color: var(--app-ink);
   transform: translateX(2px);
 }
 .nav-icon-bar .nav-icon-item.active {
-  background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-accent-strong) 100%);
-  color: #0f172a;
-  box-shadow: 0 6px 24px rgba(34, 211, 238, 0.22);
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--app-border);
+  color: var(--app-ink);
+  font-weight: 600;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+}
+.dark-mode .nav-icon-bar .nav-icon-item.active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #e5e7eb;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
 }
 .nav-icon-bar.collapsed .nav-icon-item {
   justify-content: center;
